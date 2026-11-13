@@ -1,0 +1,32 @@
+[project]
+name = "wildprs"
+version = "0.1.0"
+description = "Athletic records of individual tracked wild animals, computed from open Movebank data"
+requires-python = ">=3.12"
+dependencies = [
+  "numpy>=2.1",
+  "polars>=1.20",
+  "pyarrow>=18",
+  "shapely>=2.0",
+  "pyshp>=2.3",
+  "requests>=2.32",
+  "matplotlib>=3.9",
+  "playwright>=1.48",
+]
+
+[project.scripts]
+wildprs = "wildprs.cli:main"
+
+[dependency-groups]
+dev = ["pytest>=8"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/wildprs"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--basetemp=.pytest_tmp -q"

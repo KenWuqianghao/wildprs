@@ -1,0 +1,596 @@
+# Record labels. Each one is a review decision with its evidence in the reason.
+# A label wins over the automatic rules.
+# Fields: category (key, list of keys, or "*"), doi (or "*"), animal (individual id or "*"),
+# state (credible | under_review | artefact), reason (shown on the site and in the audit).
+# The most specific matching label wins: animal, then doi, then category.
+
+# Caspian terns, investigated 2026-11-13. Spring flights over the Sahara at 3.7 to 5.4 km height
+# with ground speeds of 100 to 150 km/h for many hours. The tracks are smooth and the clock is
+# consistent (median flight speed 32 km/h over 398,075 legs of 4 to 6 min), so a sensor fault is
+# not likely. The speeds need a tailwind of 60 to 100 km/h; the wind check (NCEP reanalysis,
+# NOAA PSL) was refused by the server (HTTP 429). Round 3 checked the wind for the flights that reach a
+# public top 10; the labels per animal below decide those. All other tern speed records stay open.
+[[label]]
+category = ["biggest-day", "fastest-hour", "sahara", "mediterranean", "alps",
+            "strait-of-gibraltar", "bosphorus-to-sinai", "tropics-of-africa"]
+doi = "doi:10.5441/001/1.hg1v55ct"
+animal = "*"
+state = "under_review"
+reason = "Caspian tern speed question: smooth GPS tracks at 100-150 km/h, 3.7-5.4 km high over the Sahara; tailwind not yet checked"
+
+[[label]]
+category = ["biggest-day", "fastest-hour", "sahara", "mediterranean", "alps",
+            "strait-of-gibraltar", "bosphorus-to-sinai", "tropics-of-africa"]
+doi = "doi:10.5441/001/1.352qf1cv"
+animal = "*"
+state = "under_review"
+reason = "Caspian tern speed question (same species and flyway as doi:10.5441/001/1.hg1v55ct); tailwind not yet checked"
+
+# Himalayan griffon vultures over the Tibetan Plateau: the data package belongs to a study of
+# flight in thin air. Each labelled flight is 800 m or more above the highest ETOPO1 terrain
+# within 3 km, on 3 GPS fixes in a row.
+[[label]]
+category = "highest-flight"
+doi = "doi:10.5441/001/1.4n2501f5"
+animal = "Thang Kaar Dorje (4014)"
+state = "credible"
+reason = "3 GPS fixes at 6.6-6.9 km over the Tibetan Plateau, 1,349 m above the highest terrain within 3 km; raw package: tag accuracy estimate 7.7 m, tag ground speed 55-94 km/h (in flight)"
+
+[[label]]
+category = "highest-flight"
+doi = "doi:10.5441/001/1.4n2501f5"
+animal = "Thang Kaar Baen (4185)"
+state = "credible"
+reason = "3 GPS fixes at about 6.6 km, 1,144 m above the highest terrain within 3 km"
+
+[[label]]
+category = "highest-flight"
+doi = "doi:10.5441/001/1.4n2501f5"
+animal = "Thang Kaar Saa (4187)"
+state = "credible"
+reason = "3 GPS fixes at about 6.5 km, 1,670 m above the highest terrain within 3 km"
+
+[[label]]
+category = "highest-flight"
+doi = "doi:10.5441/001/1.143v2p2k"
+animal = "Thang Kaar Maa Zang (3959)"
+state = "credible"
+reason = "3 GPS fixes at about 6.4 km, 1,266 m above the highest terrain within 3 km"
+
+[[label]]
+category = "highest-flight"
+doi = "doi:10.5441/001/1.4n2501f5"
+animal = "Thang Kaar Om Zhin (3923)"
+state = "credible"
+reason = "3 GPS fixes at about 6.25 km, 834 m above the highest terrain within 3 km"
+
+# Round 3 audit, 2026-11-13: records that would enter a public top 10 of a care board.
+# Evidence tools: data/audit/round3/evidence.py (leg profile, fix quality, flock neighbours) and wind.py
+# (NCEP/NCAR reanalysis tailwind and implied airspeed). Airspeeds are compared with Alerstam et al. 2007,
+# PLoS Biol 5:e197, Protocol S1 (equivalent airspeed Ue): a record passes when its implied mean Ue is at
+# most the species value + 4 m/s (about 2 SD of the within-species spread in that table).
+
+[[label]]
+category = "biggest-day"
+doi = "doi:10.5441/001/1.hm5nk220"
+animal = "sea lion 12"
+state = "artefact"
+reason = "positions step by the same amount every hour on a straight line and then turn back: interpolated fixes, only 81 km straight-line in the 24 h"
+
+[[label]]
+category = "fastest-hour"
+doi = "doi:10.5441/001/1.313"
+animal = "52189"
+state = "artefact"
+reason = "one fix 2.4 km off the track and back to the same point 30 min later: a position error, not a swim at 8 km/h"
+
+[[label]]
+category = "fastest-hour"
+doi = "doi:10.5441/001/1.313"
+animal = "61813"
+state = "artefact"
+reason = "1-2 km/h for 40 min, then one 17 km/h leg to a new position: one bad fix sets the hour"
+
+[[label]]
+category = "fastest-hour"
+doi = "doi:10.5441/001/1.711"
+animal = "BS20F0014"
+state = "artefact"
+reason = "10-minute legs at 47-61 km/h in a zigzag for an hour, beyond the running ability of bighorn sheep; transport in a vehicle is likely (not confirmed)"
+
+[[label]]
+category = "fastest-hour"
+doi = "doi:10.5441/001/1.44cb3946"
+animal = "2011GoM-Pma-00823"
+state = "under_review"
+reason = "37 km in 1.3 h on 4 fixes with 4-5 satellites; far above the usual cruising speed of sperm whales, but no fix is clearly wrong"
+
+[[label]]
+category = "biggest-day"
+doi = "doi:10.5441/001/1.313"
+animal = "61811"
+state = "credible"
+reason = "Somali coast, Dec 2012: NOAA OSCAR surface current (15 m, 5-day, 1/3 degree) runs with the turtle at 3.9 km/h; the turtle swam 2.7 km/h through the water, a normal green turtle speed"
+
+[[label]]
+category = "biggest-day"
+doi = "doi:10.5441/001/1.313"
+animal = "52189"
+state = "under_review"
+reason = "smooth Fastloc GPS track at a steady 5-8 km/h, above the usual swimming speed of green turtles; the current is not checked (the OSCAR product on NOAA ERDDAP ends in Sep 2014; this swim is in Oct 2018)"
+
+[[label]]
+category = "biggest-day"
+doi = "doi:10.5441/001/1.313"
+animal = "21914a"
+state = "under_review"
+reason = "smooth Fastloc GPS track at 5.4 km/h; NOAA OSCAR current (5-day, 1/3 degree) gives only 1.2 km/h along the track, which leaves 4.2 km/h through the water, high for a green turtle; an eddy below the OSCAR resolution is possible"
+
+[[label]]
+category = "biggest-day"
+doi = "doi:10.5441/001/1.ct72m82n"
+animal = "GWFG_2015_423"
+state = "credible"
+reason = "flock: 7 tagged geese of the study flew 1,600-2,260 km White Sea area to Germany and the Netherlands on 4-5 Oct 2016; tailwind 51 km/h, implied airspeed 55 km/h (Ue 14.7 m/s; species 16.1)"
+
+[[label]]
+category = "biggest-day"
+doi = "doi:10.5441/001/1.ct72m82n"
+animal = "GWFG_2015_432"
+state = "credible"
+reason = "flock: 7 tagged geese of the study flew 1,600-2,260 km White Sea area to Germany and the Netherlands on 4-5 Oct 2016; tailwind 49 km/h, implied airspeed 53 km/h (Ue 14.3 m/s; species 16.1)"
+
+[[label]]
+category = "biggest-day"
+doi = "doi:10.5441/001/1.ct72m82n"
+animal = "GWFG_2015_442"
+state = "credible"
+reason = "flock: 7 tagged geese of the study flew 1,600-2,260 km White Sea area to Germany and the Netherlands on 4-5 Oct 2016; tailwind 47 km/h, implied airspeed 59 km/h (Ue 16.1 m/s; species 16.1)"
+
+[[label]]
+category = "fastest-hour"
+doi = "doi:10.5441/001/1.ct72m82n"
+animal = "GWFG_2015_423"
+state = "credible"
+reason = "same flight as its biggest day (4-5 Oct 2016, with flock); tailwind 67 km/h, implied airspeed 72 km/h (Ue 19.7 m/s; species 16.1 + 4)"
+
+[[label]]
+category = "fastest-hour"
+doi = "doi:10.5441/001/1.ct72m82n"
+animal = "GWFG_2015_432"
+state = "credible"
+reason = "same flight as its biggest day (4-5 Oct 2016, with flock); tailwind 74 km/h, implied airspeed 73 km/h (Ue 19.1 m/s; species 16.1 + 4)"
+
+[[label]]
+category = "biggest-day"
+doi = "doi:10.5441/001/1.46b0mq21"
+animal = "GWFG_2015_424"
+state = "credible"
+reason = "smooth hourly GPS track Kazakhstan to Ukraine on 22-23 Oct 2016 with Lily_17 on the same route; tailwind 22 km/h, implied airspeed 73 km/h (Ue 19.5 m/s; species 16.1 + 4)"
+
+[[label]]
+category = "biggest-day"
+doi = "doi:10.5441/001/1.46b0mq21"
+animal = "Lily_17"
+state = "credible"
+reason = "smooth hourly GPS track Kazakhstan to Ukraine on 22-23 Oct 2016 with GWFG_2015_424 on the same route; tailwind 27 km/h, implied airspeed 60 km/h (Ue 16.2 m/s; species 16.1)"
+
+[[label]]
+category = "biggest-day"
+doi = "doi:10.5441/001/1.fk899541"
+animal = "182740"
+state = "credible"
+reason = "flock: tagged goose 192729 within 4 km, two more on the same route, Netherlands to Karelia 16 May 2020; tailwind 37-44 km/h, implied airspeed 63-67 km/h (Ue 15-17 m/s; species 17.0)"
+
+[[label]]
+category = "fastest-hour"
+doi = "doi:10.5441/001/1.22kk5126"
+animal = "X27"
+state = "under_review"
+reason = "smooth 10-min GPS fixes at 128-148 km/h, but reanalysis tailwind at the GPS height is only 26 km/h: implied airspeed 111 km/h (Ue 30 m/s; species 17.3)"
+
+[[label]]
+category = "biggest-day"
+doi = "doi:10.5441/001/1.hg1v55ct"
+animal = "FA05"
+state = "credible"
+reason = "Mali to Tunisia 18-19 Apr 2020 at about 4 km: NCEP tailwind 49 km/h, implied airspeed 61 km/h (Ue 14.0 m/s; Caspian tern 12.1, Alerstam et al. 2007); raw package: 125 fixes, the tag's own GPS speed has a median of 106 km/h; spring adults cut stopover time by 78 % (Rueda-Uribe et al. 2021)"
+
+[[label]]
+category = "sahara"
+doi = "doi:10.5441/001/1.hg1v55ct"
+animal = "FA05"
+state = "credible"
+reason = "same flight as its biggest day, 18-19 Apr 2020 at about 4 km: NCEP tailwind 47 km/h, implied airspeed 61 km/h (Ue 14.0 m/s; Caspian tern 12.1); raw package: 57 fixes, all used; the tag's own GPS speed has a median of 131 km/h"
+
+[[label]]
+category = "biggest-day"
+doi = "doi:10.5441/001/1.hg1v55ct"
+animal = "FA11"
+state = "credible"
+reason = "Senegal to northern Morocco 16-17 Apr 2020 at about 4.6 km: NCEP tailwind 36 km/h, implied airspeed 66 km/h (Ue 15.1 m/s; Caspian tern 12.1)"
+
+[[label]]
+category = "sahara"
+doi = "doi:10.5441/001/1.hg1v55ct"
+animal = "FA11"
+state = "credible"
+reason = "same flight as its biggest day, Apr 2020 at about 4.6 km: NCEP tailwind 32 km/h, implied airspeed 65 km/h (Ue 15.0 m/s; Caspian tern 12.1)"
+
+[[label]]
+category = "biggest-day"
+doi = "doi:10.5441/001/1.hg1v55ct"
+animal = "C31"
+state = "credible"
+reason = "Chad to Egypt 31 Mar 2020 at about 5.2 km: NCEP tailwind 40 km/h, implied airspeed 62 km/h (Ue 13.9 m/s; Caspian tern 12.1)"
+
+[[label]]
+category = "biggest-day"
+doi = "doi:10.5441/001/1.hg1v55ct"
+animal = "AC60"
+state = "credible"
+reason = "Chad to the sea south of Crete 3 Apr 2020 at about 2.9 km: NCEP tailwind 31 km/h, implied airspeed 63 km/h (Ue 15.2 m/s; Caspian tern 12.1)"
+
+[[label]]
+category = "biggest-day"
+doi = "doi:10.5441/001/1.hg1v55ct"
+animal = "MH3"
+state = "credible"
+reason = "Mali to Libya 4 Apr 2020 at about 3.9 km: NCEP tailwind 35 km/h, implied airspeed 64 km/h (Ue 15.0 m/s; Caspian tern 12.1)"
+
+[[label]]
+category = "sahara"
+doi = "doi:10.5441/001/1.hg1v55ct"
+animal = "AC60"
+state = "under_review"
+reason = "NCEP tailwind 24 km/h at about 3.3 km: implied airspeed 68 km/h (Ue 16.2 m/s), just above the limit of 16.1 for Caspian tern"
+
+[[label]]
+category = "biggest-day"
+doi = "doi:10.5441/001/1.hg1v55ct"
+animal = "FA04"
+state = "under_review"
+reason = "NCEP tailwind 24 km/h at about 3 km: implied airspeed 70 km/h (Ue 16.7 m/s), above the limit of 16.1 for Caspian tern"
+
+[[label]]
+category = "fastest-hour"
+doi = "doi:10.5441/001/1.hg1v55ct"
+animal = "MH3"
+state = "under_review"
+reason = "NCEP tailwind 44 km/h at about 4.5 km: implied airspeed 96 km/h (Ue 21.3 m/s), far above Caspian tern (12.1)"
+
+[[label]]
+category = "highest-flight"
+doi = "doi:10.5441/001/1.hg1v55ct"
+animal = "*"
+state = "under_review"
+reason = "GPS heights of these tern tags jump by kilometres between fixes in the same flight (for example -1,417 m then 2,656 m), so a single peak height is not reliable"
+
+[[label]]
+category = "highest-flight"
+doi = "doi:10.5441/001/1.352qf1cv"
+animal = "*"
+state = "under_review"
+reason = "Caspian tern tags of the same type as doi:10.5441/001/1.hg1v55ct, whose GPS heights jump by kilometres between fixes; peak heights not reliable"
+
+[[label]]
+category = "highest-flight"
+doi = "doi:10.5441/001/1.ck04mn78_2"
+animal = "Frank Elstner + / DER AN911 (eobs 3908)"
+state = "under_review"
+reason = "smooth climbs of 1-3 m/s over the High Atlas look like thermal soaring, but 5.9 km is above any white stork height found in the literature; not decided"
+
+[[label]]
+category = "biggest-day"
+doi = "doi:10.5441/001/1.31c2v92f"
+animal = "700"
+state = "credible"
+reason = "Netherlands to Ukraine 19-20 Mar 2014, smooth track; no GPS height, but at 925, 850 and 700 hPa the NCEP tailwind is 62-71 km/h and the implied airspeed 53-60 km/h (Ue 14-15 m/s; species 16.1)"
+
+[[label]]
+category = "biggest-day"
+doi = "doi:10.5441/001/1.254rd102"
+animal = "Gustaf_3104"
+state = "credible"
+reason = "White Sea area to Poland 30 Sep-1 Oct 2014, tagged goose 720 within 44 km; NCEP tailwind 26 km/h, implied airspeed 63 km/h (Ue 16.9 m/s; species 16.1)"
+
+[[label]]
+category = "fastest-hour"
+doi = "doi:10.5441/001/1.254rd102"
+animal = "HansChristian_2731"
+state = "credible"
+reason = "Lithuania to Latvia 21 Mar 2014 at about 0.4 km: NCEP tailwind 84 km/h, implied airspeed 64 km/h (Ue 17.1 m/s; species 16.1); raw package: the tag's own GPS speed is 149 km/h (median of 5 fixes), accuracy estimate 2.9 m"
+
+[[label]]
+category = "fastest-hour"
+doi = "doi:10.5441/001/1.254rd102"
+animal = "CS007021_3097"
+state = "credible"
+reason = "NE Germany to Poland 19 Mar 2014 at about 0.8 km, tagged goose 3276 on the same night: NCEP tailwind 80 km/h, implied airspeed 63 km/h (Ue 16.9 m/s; species 16.1)"
+
+[[label]]
+category = "fastest-hour"
+doi = "doi:10.5441/001/1.715k46g2"
+animal = "Curlew-4309023-Schillig"
+state = "under_review"
+reason = "no GPS height; NCEP tailwind 47-64 km/h gives an implied airspeed of 90-107 km/h (Ue 21.5-28.7 m/s), above Eurasian curlew (16.3, Alerstam et al. 2007)"
+
+[[label]]
+category = "fastest-hour"
+doi = "doi:10.5441/001/1.715k46g2"
+animal = "Curlew-4163161-Cuxhaven"
+state = "under_review"
+reason = "no GPS height; implied airspeed is within range only if it flew at about 3 km (Ue 17.5 m/s at 700 hPa, 22-24 m/s lower down)"
+
+[[label]]
+category = "fastest-hour"
+doi = "doi:10.5441/001/1.715k46g2"
+animal = "Curlew-4163111-Wursten"
+state = "under_review"
+reason = "no GPS height; implied airspeed is within range only at 925 hPa (Ue 19.6 m/s) and above it at 850 and 700 hPa (21-23 m/s)"
+
+[[label]]
+category = "biggest-day"
+doi = "doi:10.5441/001/1.hg1v55ct"
+animal = "UA02"
+state = "credible"
+reason = "Senegal to Morocco 30 Apr-1 May 2019 at about 4.2 km: NCEP tailwind 43 km/h, implied airspeed 55 km/h (Ue 12.3 m/s; Caspian tern 12.1)"
+
+[[label]]
+category = "biggest-day"
+doi = "doi:10.5441/001/1.hg1v55ct"
+animal = "FA07"
+state = "credible"
+reason = "Senegal to Morocco 30 Apr-1 May 2019 at about 3 km: NCEP tailwind 41 km/h, implied airspeed 52 km/h (Ue 12.2 m/s; Caspian tern 12.1)"
+
+[[label]]
+category = "fastest-hour"
+doi = "doi:10.5441/001/1.hg1v55ct"
+animal = "FA05"
+state = "under_review"
+reason = "NCEP tailwind 80 km/h at about 3.5 km: implied airspeed 79 km/h (Ue 18.5 m/s), above Caspian tern (12.1 + 4)"
+
+[[label]]
+category = "fastest-hour"
+doi = "doi:10.5441/001/1.hg1v55ct"
+animal = "FA04"
+state = "under_review"
+reason = "NCEP tailwind 70 km/h at about 3.4 km: implied airspeed 84 km/h (Ue 19.7 m/s), above Caspian tern (12.1 + 4)"
+
+[[label]]
+category = "fastest-hour"
+doi = "doi:10.5441/001/1.hg1v55ct"
+animal = "C31"
+state = "under_review"
+reason = "NCEP tailwind 62 km/h at about 5 km: implied airspeed 81 km/h (Ue 17.4 m/s), above Caspian tern (12.1 + 4)"
+
+[[label]]
+category = "fastest-hour"
+doi = "doi:10.5441/001/1.hg1v55ct"
+animal = "UA02"
+state = "credible"
+reason = "1 May 2019 at about 5.7 km over Morocco: NCEP tailwind 69 km/h, implied airspeed 68 km/h (Ue 14.2 m/s; Caspian tern 12.1)"
+
+[[label]]
+category = "fastest-hour"
+doi = "doi:10.5441/001/1.46b0mq21"
+animal = "20_Aleska_F"
+state = "under_review"
+reason = "smooth 5-min GPS fixes, but NCEP tailwind at the GPS height is 51 km/h: implied airspeed 86 km/h (Ue 23.2 m/s), above the species (16.1 + 4)"
+
+[[label]]
+category = "fastest-hour"
+doi = "doi:10.5441/001/1.46b0mq21"
+animal = "GWFG_2015_424"
+state = "under_review"
+reason = "NCEP tailwind at the GPS height is 40 km/h: implied airspeed 92 km/h (Ue 24.9 m/s), above the species (16.1 + 4)"
+
+[[label]]
+category = "fastest-hour"
+doi = "doi:10.5441/001/1.ct72m82n"
+animal = "GWFG_2015_443"
+state = "credible"
+reason = "part of the 4-5 Oct 2016 flock flight over Estonia at about 1 km: NCEP tailwind 70 km/h, implied airspeed 66 km/h (Ue 17.5 m/s; species 16.1)"
+
+[[label]]
+category = "fastest-hour"
+doi = "doi:10.5441/001/1.31c2v92f"
+animal = "700"
+state = "credible"
+reason = "same flight as its biggest day, 19-20 Mar 2014; no GPS height, but at 925-700 hPa the NCEP tailwind is 62-72 km/h and the implied airspeed 63-71 km/h (Ue 15-19 m/s; species 16.1 + 4)"
+
+[[label]]
+category = "fastest-hour"
+doi = "doi:10.5441/001/1.8ms7mm80"
+animal = "233E"
+state = "under_review"
+reason = "NCEP tailwind at the GPS height is 49 km/h: implied airspeed 93 km/h (Ue 25.5 m/s), above Bewick's swan (18.5 + 4)"
+
+[[label]]
+category = "fastest-hour"
+doi = "doi:10.5441/001/1.hg1v55ct"
+animal = "AC60"
+state = "under_review"
+reason = "NCEP tailwind at the GPS height (about 0.5 km) is 59 km/h: implied airspeed 74 km/h (Ue 20.1 m/s), above Caspian tern (12.1 + 4)"
+
+[[label]]
+category = "fastest-hour"
+doi = "doi:10.5441/001/1.8ms7mm80"
+animal = "213E"
+state = "credible"
+reason = "17 Mar 2017 at about 1.3 km: NCEP tailwind 63 km/h, implied airspeed 67 km/h (Ue 17.5 m/s; Bewick's swan 18.5)"
+
+[[label]]
+category = "fastest-hour"
+doi = "doi:10.5441/001/1.715k46g2"
+animal = "Curlew-4163152-Wursten"
+state = "credible"
+reason = "Baltic Sea to Estonia 12 Apr 2020; no GPS height, but at 925-700 hPa the NCEP tailwind is 62-64 km/h and the implied airspeed 66-75 km/h (Ue 17.5-18.0 m/s; Eurasian curlew 16.3)"
+
+[[label]]
+category = "fastest-hour"
+doi = "doi:10.5441/001/1.8ms7mm80"
+animal = "229E"
+state = "credible"
+reason = "Baltic Sea off Rügen 14-15 Mar 2017 at about 0.2 km: NCEP tailwind 49 km/h, implied airspeed 79 km/h (Ue 21.9 m/s; Bewick's swan 18.5 + 4)"
+
+[[label]]
+category = "fastest-hour"
+doi = "doi:10.5441/001/1.8ms7mm80"
+animal = "236E"
+state = "credible"
+reason = "Baltic coast of Poland 17 Mar 2017 at about 0.3 km: NCEP tailwind 44 km/h, implied airspeed 79 km/h (Ue 21.7 m/s; Bewick's swan 18.5 + 4)"
+
+[[label]]
+category = "fastest-hour"
+doi = "doi:10.5441/001/1.22kk5126"
+animal = "X34"
+state = "credible"
+reason = "flock: X47 on the same route at the same time, Kola Peninsula 7 Jun 2020 at about 0.7 km; NCEP tailwind 56 km/h, implied airspeed 70 km/h (Ue 18.7 m/s; taiga bean goose 17.3)"
+
+[[label]]
+category = "fastest-hour"
+doi = "doi:10.5441/001/1.22kk5126"
+animal = "X47"
+state = "credible"
+reason = "flock: X34 on the same route at the same time, Kola Peninsula 7 Jun 2020 at about 0.6 km; NCEP tailwind 55 km/h, implied airspeed 70 km/h (Ue 18.8 m/s; taiga bean goose 17.3)"
+
+[[label]]
+category = "sahara"
+doi = "doi:10.5441/001/1.hg1v55ct"
+animal = "UA00"
+state = "credible"
+reason = "autumn crossing 1-2 Nov 2018 at about 4.6 km: NCEP tailwind 12 km/h, implied airspeed 64 km/h (Ue 15.2 m/s; Caspian tern 12.1)"
+
+[[label]]
+category = "sahara"
+doi = "doi:10.5441/001/1.352qf1cv"
+animal = "PUU"
+state = "under_review"
+reason = "no GPS height; implied airspeed is within range at 700-500 hPa (Ue 13.6-15.4 m/s) but above it at 925 and 850 hPa (18-19 m/s)"
+
+[[label]]
+category = "sahara"
+doi = "doi:10.5441/001/1.352qf1cv"
+animal = "PUP"
+state = "under_review"
+reason = "flew with NPK (0.5 km apart); no GPS height; implied airspeed Ue 13-17 m/s by level, above the limit of 16.1 at 700 hPa"
+
+[[label]]
+category = "sahara"
+doi = "doi:10.5441/001/1.352qf1cv"
+animal = "NPK"
+state = "under_review"
+reason = "flew with PUP (0.5 km apart); no GPS height; implied airspeed Ue 13-17 m/s by level, above the limit of 16.1 at 700 hPa"
+
+[[label]]
+category = "sahara"
+doi = "doi:10.5441/001/1.352qf1cv"
+animal = "PAH"
+state = "credible"
+reason = "48 h crossing with stops; 52 km/h mean ground speed while moving and implied airspeed 63 km/h at 700 hPa (Ue 15.2 m/s): no speed doubt"
+
+[[label]]
+category = "sahara"
+doi = "doi:10.5441/001/1.352qf1cv"
+animal = "PHC"
+state = "credible"
+reason = "55 h crossing with stops; 60 km/h mean ground speed while moving and implied airspeed 56 km/h at 700 hPa (Ue 13.4 m/s): no speed doubt"
+
+[[label]]
+category = "sahara"
+doi = "doi:10.5441/001/1.352qf1cv"
+animal = "TYU"
+state = "credible"
+reason = "65 h crossing with stops; 49 km/h mean ground speed while moving: no speed doubt"
+
+[[label]]
+category = "biggest-day"
+doi = "doi:10.5441/001/1.31c2v92f"
+animal = "746"
+state = "credible"
+reason = "White Sea area to Poland 28-29 Sep 2013 at about 0.8 km, smooth track: NCEP tailwind 27 km/h, implied airspeed 60 km/h (Ue 15.9 m/s; species 16.1)"
+
+[[label]]
+category = "fastest-hour"
+doi = "doi:10.5441/001/1.v8d24552"
+animal = "1787/HH582"
+state = "credible"
+reason = "Lebanon to Syria 22 Mar 2013 at about 2.4 km, 12 smooth GPS fixes: NCEP tailwind 80 km/h, implied airspeed 57 km/h (Ue 13.9 m/s; white stork 16.0)"
+
+[[label]]
+category = "biggest-day"
+doi = "doi:10.5441/001/1.711"
+animal = "MD18F0427"
+state = "artefact"
+reason = "12 h at one point, then 93 km in 2 h (46 km/h), then at one point again: transport in a vehicle, likely a translocation (not confirmed)"
+
+[[label]]
+category = "biggest-day"
+doi = "doi:10.5441/001/1.711"
+animal = "MD18M0171"
+state = "artefact"
+reason = "a two-fix trip of 47 km out and straight back at 22-25 km/h for 4 h, then 12 h at one point: not a mule deer pace; position error or transport"
+
+[[label]]
+category = "biggest-day"
+doi = "doi:10.5441/001/1.711"
+animal = "MD19F0116"
+state = "artefact"
+reason = "80 km along the track but 1 km from start to end: out-and-back jumps between 2-hourly fixes, not travel"
+
+[[label]]
+category = "biggest-day"
+doi = "doi:10.5441/001/1.hm5nk220"
+animal = "zebra 6"
+state = "artefact"
+reason = "the collar sits at one point shared with zebra 9 and springbok collars, then makes a 57 km/h return trip: a vehicle with the collars, not the zebra"
+
+[[label]]
+category = "biggest-day"
+doi = "doi:10.5441/001/1.hm5nk220"
+animal = "zebra 9"
+state = "artefact"
+reason = "same fixed point and 50 km/h legs as zebra 6 and springbok collars on the same day: a vehicle with the collars, not the zebra"
+
+[[label]]
+category = "biggest-day"
+doi = "doi:10.5441/001/1.hm5nk220"
+animal = "zebra 2"
+state = "artefact"
+reason = "starts at the fixed collar point shared with zebra 6 and 9 and makes 29 km/h hops: a vehicle with the collar, not the zebra"
+
+[[label]]
+category = "biggest-day"
+doi = "doi:10.5441/001/1.hm5nk220"
+animal = "zebra 1"
+state = "artefact"
+reason = "leaves the fixed collar point together with zebra 2 (same positions at the same hour) at 14-18 km/h: collars carried in a vehicle before release"
+
+[[label]]
+category = "biggest-day"
+doi = "doi:10.5441/001/1.hm5nk220"
+animal = "elephant 6"
+state = "artefact"
+reason = "legs up to 64 km/h, beyond any elephant: transport or position error"
+
+[[label]]
+category = "biggest-day"
+doi = "doi:10.5441/001/1.hm5nk220"
+animal = "elephant 8"
+state = "artefact"
+reason = "legs up to 62 km/h, beyond any elephant: transport or position error"
+
+[[label]]
+category = "biggest-day"
+doi = "doi:10.5441/001/1.708"
+animal = "474"
+state = "artefact"
+reason = "one fix 36 km away between two fixes at the same place: a bad fix, not travel"
+
+[[label]]
+category = "biggest-day"
+doi = "doi:10.5441/001/1.hm5nk220"
+animal = "zebra 4"
+state = "artefact"
+reason = "starts at the fixed collar point shared with zebras 1, 2, 6 and 9 in the week of release: collar carried in a vehicle, not the zebra"
