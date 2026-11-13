@@ -20,7 +20,9 @@ TIME_TOL_S = 1.0
 def _recipe(record_id: str, site_dir: str | None) -> dict:
     src = site_dir or str(config.SITE)
     if src.startswith(("http://", "https://")):
-        with urllib.request.urlopen(f"{src.rstrip('/')}/r/{record_id}/record.json", timeout=60) as r:
+        # The default urllib client name gets HTTP 403 from the site's host.
+        req = urllib.request.Request(f"{src.rstrip('/')}/r/{record_id}/record.json", headers={"User-Agent": config.USER_AGENT})
+        with urllib.request.urlopen(req, timeout=60) as r:
             return json.load(r)
     return json.loads((Path(src) / "r" / record_id / "record.json").read_text())
 
