@@ -172,6 +172,34 @@ class Effort:
     evidence: dict = field(default_factory=dict)
 
 
+class ArtKind(StrEnum):
+    PHOTO = "photo"
+    SILHOUETTE = "silhouette"
+
+
+@dataclass(frozen=True)
+class ArtFile:
+    """One image file under data/art. crop: "wide" (3:2), "square" (1:1) or "full" (a silhouette)."""
+    path: str
+    crop: str
+    width: int
+    height: int
+
+
+@dataclass(frozen=True)
+class ArtEntry:
+    """One image of a taxon with its licence facts, as data/art/manifest.json holds it."""
+    taxon: str
+    kind: ArtKind
+    files: tuple[ArtFile, ...]
+    licence: str
+    licence_url: str
+    creator: str
+    source_url: str
+    shows: str
+    change: str
+
+
 def haversine_km(lat1, lon1, lat2, lon2):
     p1, p2 = np.radians(lat1), np.radians(lat2)
     dphi = p2 - p1

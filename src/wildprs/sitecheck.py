@@ -54,10 +54,41 @@ def track_errors(tf: dict, sensitive: bool) -> list[str]:
     return errs
 
 
+ART_REF = re.compile(r'(?:src|href|data-sil)="([^"]*art/[^"]+)"|srcset="([^"]+)"|url\(([^)]*art/[^)]+)\)')
+
+
+def art_errors(site: Path, board_taxa: set[str]) -> list[str]:
+    """Every image a page shows exists and has an entry on /credits/; every board taxon has a silhouette."""
+    errs = []
+    manifest = json.loads((site / "art" / "manifest.json").read_text()) if (site / "art" / "manifest.json").exists() else []
+    sil = {e["taxon"] for e in manifest if e["kind"] == "silhouette" and all((site / "art" / f["path"]).exists() for f in e["files"])}
+    errs += [f"{t}: board taxon has no silhouette" for t in sorted(board_taxa - sil)]
+    credits = site / "credits" / "index.html"
+    credited = {p for files in re.findall(r'data-files="([^"]*)"', credits.read_text()) for p in files.split()} if credits.exists() else set()
+    for page in site.rglob("*.html"):
+        html = page.read_text()
+        refs = set()
+        for src, srcset, url in ART_REF.findall(html):
+            refs |= {u.split()[0] for u in srcset.split(",") if "art/" in u} if srcset else {src or url}
+        for ref in refs:
+            target = (page.parent / ref).resolve()
+            rel = target.relative_to((site / "art").resolve()).as_posix() if target.is_relative_to((site / "art").resolve()) else None
+            if not target.exists():
+                errs.append(f"{page.relative_to(site)}: missing art file {ref}")
+            elif rel not in credited:
+                errs.append(f"{page.relative_to(site)}: {ref} has no entry on /credits/")
+    for rj in site.glob("b/**/race.json"):
+        for rn in json.loads(rj.read_text())["runners"]:
+            if not (site / rn["sil"]).exists():
+                errs.append(f"{rj.relative_to(site)}: missing silhouette {rn['sil']}")
+    return errs
+
+
 def check(site: Path) -> list[str]:
     errors: list[str] = []
     boards = json.loads((site / "boards.json").read_text())
     seen = set()
+    taxa = set()
     for cat, scopes in boards.items():
         for scope, entries in scopes.items():
             page = site / "b" / cat / ("" if scope == "all" else scope) / "index.html"
@@ -78,6 +109,7 @@ def check(site: Path) -> list[str]:
                 if rec["state"] != "credible":
                     errors.append(f"{e['id']}: state {rec['state']} on a public board")
                 seen.add(e["id"])
+                taxa.add(rec["animal"]["taxon"])
     for d in sorted((site / "r").iterdir()):
         rid = d.name
         rec = json.loads((d / "record.json").read_text())
@@ -107,6 +139,7 @@ def check(site: Path) -> list[str]:
         mp4 = d / "replay.mp4"
         if mp4.exists() and mp4.stat().st_size > VIDEO_MAX_BYTES:
             errors.append(f"{rid}: replay.mp4 over {VIDEO_MAX_BYTES} bytes")
+    errors += art_errors(site, taxa)
     for page in site.rglob("*.html"):
         for href in re.findall(r'(?:href|src)="([^"#]+)"', page.read_text()):
             if urlparse(href).scheme:

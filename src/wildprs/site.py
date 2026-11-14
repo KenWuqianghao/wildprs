@@ -4,12 +4,15 @@
   /b/<category>/<class>/    board of one animal class
   /r/<record-id>/           record page; record.json and card.png beside it
   /about/                   data source, method, limits, verification
+  /credits/                 every animal image with its creator and licence
+  /art/                     photo and silhouette files (from data/art)
 All links are relative, so the site works under any base path and from a local server."""
 from __future__ import annotations
 
 import html
 import json
 import shutil
+from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -17,11 +20,11 @@ import numpy as np
 import polars as pl
 
 from . import cartography as C
-from . import config, replay, taxa
+from . import art, config, replay, taxa
 from .audit import BOARD_SIZE, BOARD_TITLES, STUDY_CAP
 from .categories import BY_KEY, SEGMENT_BY_KEY, Category
 from .clean import CEILING_MS, RULES, SPLIT_DOC
-from .model import Track, haversine_km
+from .model import ArtEntry, ArtKind, Track, haversine_km
 from .pipeline import load_tracks
 from .repo import packages
 
@@ -126,9 +129,23 @@ def _geometry(r: dict, tr: Track, coarse: bool) -> dict:
             "eff": C.simplify(lon(tr.lon[i0:i1 + 1]), tr.lat[i0:i1 + 1], coarse), "wrap": wrap}
 
 
-def map_view(lon: np.ndarray, lat: np.ndarray, w: int, h: int, place: str, thumb: bool = False,
+def map_view(lon: np.ndarray, lat: np.ndarray, w: int, h: int, box: C.Box, thumb: bool = False,
              point: bool = False) -> C.MapView:
-    return C.frame(lon, lat, w, h, place, min_span_deg=2.0 if thumb else (16.0 if point else 6.0))
+    return C.frame(lon, lat, w, h, box, min_span_deg=2.0 if thumb else (16.0 if point else 6.0))
+
+
+# The photo medal covers the bottom-right corner of a share card (see .p-medal in style.css).
+MEDAL_CLEAR = (0.795, 0.635)
+POSTER_BOXES = ((0.42, 0.11, 0.78, 0.89), (0.42, 0.06, 0.94, 0.62))
+
+
+def poster_view(lon: np.ndarray, lat: np.ndarray, point: bool) -> C.MapView:
+    """The share-card frame: the largest fit that keeps the track out of the photo medal."""
+    v = map_view(lon, lat, CARD_W, CARD_H, C.RIGHT, point=point)
+    x, y = v.xy(lon, lat)
+    if not np.any((x > MEDAL_CLEAR[0] * CARD_W) & (y > MEDAL_CLEAR[1] * CARD_H)):
+        return v
+    return max((map_view(lon, lat, CARD_W, CARD_H, b, point=point) for b in POSTER_BOXES), key=lambda m: m.scale)
 
 
 def _lines(v: C.MapView, g: dict) -> tuple[str, str, np.ndarray, np.ndarray, int]:
@@ -236,6 +253,58 @@ def readout(tf: dict) -> list[tuple[str, str, str]]:
     return cells
 
 
+# ---------- animal images ----------
+
+class Art:
+    """The images of one taxon. `sil` is always there on a public board; `photo` is optional."""
+    def __init__(self, sil: ArtEntry, photo: ArtEntry | None):
+        self.sil, self.photo = sil, photo
+
+    @property
+    def sil_path(self) -> str:
+        return "art/" + self.sil.files[0].path
+
+    def photo_files(self, crop: str):
+        return [f for f in self.photo.files if f.crop == crop] if self.photo else []
+
+
+def sil_mark(a: Art, rel: str, cls: str = "") -> str:
+    """The silhouette as a CSS mask, so that it takes any colour or gradient. Decorative: the name is
+    always next to it."""
+    f = a.sil.files[0]
+    return (f'<span class="sil {cls}" style="--sil:url({rel}{a.sil_path});--sil-r:{f.width / f.height:.3f}" '
+            f'aria-hidden="true"></span>')
+
+
+def photo_img(a: Art, crop: str, sizes: str, rel: str, cls: str = "", eager: bool = False, alt: str = "") -> str:
+    fs = a.photo_files(crop)
+    big = fs[-1]
+    srcset = ", ".join(f"{rel}art/{f.path} {f.width}w" for f in fs)
+    load = 'fetchpriority="high"' if eager else 'loading="lazy" decoding="async"'
+    return (f'<img class="{cls}" src="{rel}art/{fs[min(1, len(fs) - 1)].path}" srcset="{srcset}" sizes="{sizes}" '
+            f'width="{big.width}" height="{big.height}" alt="{esc(alt)}" {load}>')
+
+
+def avatar(a: Art, rel: str, cls: str = "av", px: int = 48) -> str:
+    """Round face: the smallest square photo crop that is sharp at px CSS pixels on a 2x screen, or the
+    silhouette on the night colour."""
+    if a.photo:
+        fs = a.photo_files("square")
+        f = next((x for x in fs if x.width >= 2 * px), fs[-1])
+        return (f'<span class="{cls}"><img src="{rel}art/{f.path}" width="{f.width}" height="{f.height}" '
+                f'alt="" loading="lazy" decoding="async"></span>')
+    return f'<span class="{cls} av-sil">{sil_mark(a, rel)}</span>'
+
+
+def credit_text(e: ArtEntry) -> str:
+    return f"{e.creator}, {e.licence}"
+
+
+def credit_html(e: ArtEntry) -> str:
+    return (f'<a href="{esc(e.source_url)}">{esc(e.creator)}</a>, '
+            f'<a href="{esc(e.licence_url)}">{esc(e.licence)}</a>')
+
+
 # ---------- page shell ----------
 
 def page(rel: str, title: str, body: str, meta: str = "", cls: str = "", script: bool = False) -> str:
@@ -252,8 +321,8 @@ def page(rel: str, title: str, body: str, meta: str = "", cls: str = "", script:
 <nav><a href="{rel}#boards">Boards</a><a href="{rel}about/">Method</a></nav></header>
 <main>{body}</main>
 <footer class="foot"><p>Data: <a href="https://datarepository.movebank.org">Movebank Data Repository</a>, CC0 packages only.
-Maps: Natural Earth. Terrain: NOAA ETOPO1. Names and Red List status: GBIF.</p>
-<p><a href="{rel}about/#verify">How to check a record</a> · <a href="{rel}about/#errors">Report an error</a></p></footer>
+Maps: Natural Earth. Terrain: NOAA ETOPO1. Names and Red List status: GBIF. Images: Wikimedia Commons, PhyloPic.</p>
+<p><a href="{rel}about/#verify">How to check a record</a> · <a href="{rel}about/#errors">Report an error</a> · <a href="{rel}credits/">Image credits</a></p></footer>
 </body></html>"""
 
 
@@ -274,8 +343,10 @@ def poster(rec: dict, rel: str) -> str:
     v, u = rec["display"]["value"], rec["display"]["unit"]
     long = len(v) + len(u) > 7
     species = f"<span>{esc(rec['animal']['common'])}</span>" if rec["animal"]["name"] else ""
+    a: Art = rec["_art"]
+    credit = f" · Photo: {esc(credit_text(a.photo))}" if a.photo else ""
     return f"""<div class="poster-wrap"><article class="poster" aria-label="{esc(rec['share_title'])}">
-{rec['_map']}
+{rec['_map']}<div class="p-medal">{avatar(a, rel, "pm", 192)}</div>
 <div class="p-top"><span class="chip">{esc(rec['chip'])}</span></div>
 <div class="p-main">
 <p class="num{' long' if long else ''}">{esc(v)}<span class="u">{esc(u)}</span></p>
@@ -283,7 +354,7 @@ def poster(rec: dict, rel: str) -> str:
 <p class="who"><b>{esc(rec['animal']['title'])}</b>{species}<span>{esc(rec['when'])}</span></p>
 </div>
 <p class="p-brand"><span class="mark" aria-hidden="true"></span>{SITE_NAME}</p>
-<p class="p-credit">Data: {esc(rec['dataset']['short'])} · Movebank · {esc(rec['dataset']['licence_short'])}</p>
+<p class="p-credit">Data: {esc(rec['dataset']['short'])} · Movebank · {esc(rec['dataset']['licence_short'])}{credit}</p>
 </article></div>"""
 
 
@@ -323,6 +394,12 @@ def build(base_url: str, png: bool = True) -> dict:
         raise SystemExit(f"names.toml: no curated common name for {missing}")
     if any(r["state"] != "credible" for r in rows.values()):
         raise SystemExit("a board holds a record that is not credible")
+    images = art.load()
+    no_sil = sorted({r["taxon"] for r in rows.values() if ArtKind.SILHOUETTE not in images.get(r["taxon"], {})})
+    if no_sil:
+        raise SystemExit(f"art.toml: no silhouette for {no_sil} (add them, then run wildprs art)")
+    arts = {t: Art(images[t][ArtKind.SILHOUETTE], images[t].get(ArtKind.PHOTO))
+            for t in {r["taxon"] for r in rows.values()}}
 
     out = config.SITE
     if out.exists():
@@ -339,6 +416,7 @@ def build(base_url: str, png: bool = True) -> dict:
         tracks = {(t.animal.ind, t.sensor): t for t in load_tracks(pkg)}
         for r in rs:
             recs[r["id"]] = _record(r, tracks[(r["ind"], r["sensor"])], boards[r["category"]], competitors, pk[pkg])
+            recs[r["id"]]["_art"] = arts[r["taxon"]]
     by_animal: dict[str, list[str]] = {}
     for rid, rec in recs.items():
         by_animal.setdefault(rec["_animal_key"], []).append(rid)
@@ -361,11 +439,14 @@ def build(base_url: str, png: bool = True) -> dict:
             d = out / "b" / key / ("" if scope == "all" else scope)
             d.mkdir(parents=True, exist_ok=True)
             rs = [recs[i] for i in ids]
-            rc = race(BY_KEY[key], rs)
+            rc = race(BY_KEY[key], rs, "../../" if scope == "all" else "../../../")
             if rc:
                 (d / "race.json").write_text(json.dumps(rc[1], separators=(",", ":"), ensure_ascii=False))
             (d / "index.html").write_text(_board_page(BY_KEY[key], scope, rs, scopes, competitors[key], base_url,
                                                       rc[0] if rc else "", (key, scope) in race_videos(boards)))
+    _copy_art(out, arts)
+    (out / "credits").mkdir()
+    (out / "credits" / "index.html").write_text(_credits_page(arts))
     (out / "about").mkdir()
     (out / "about" / "index.html").write_text(_about_page(boards))
     (out / "index.html").write_text(_home_page(boards, recs, base_url))
@@ -381,6 +462,17 @@ def build(base_url: str, png: bool = True) -> dict:
     from .video import restore_cached
     restore_cached(out)
     return {"records": len(recs), "boards": sum(len(s) for s in boards.values()), "pngs": n_png}
+
+
+def _copy_art(out: Path, arts: dict[str, Art]) -> None:
+    """The image files of the taxa on the site, and art/manifest.json with their licence facts."""
+    entries = [e for a in arts.values() for e in (a.sil, a.photo) if e]
+    for e in entries:
+        for f in e.files:
+            (out / "art" / f.path).parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(config.ART / f.path, out / "art" / f.path)
+    (out / "art" / "manifest.json").write_text(json.dumps(
+        [asdict(e) for e in sorted(entries, key=lambda e: (e.taxon, e.kind))], indent=1, ensure_ascii=False))
 
 
 def _record(r: dict, tr: Track, cat_boards: dict, competitors: dict, p) -> dict:
@@ -399,8 +491,8 @@ def _record(r: dict, tr: Track, cat_boards: dict, competitors: dict, p) -> dict:
     g = _geometry(r, tr, coarse)
     point = cat.key in POINT_LIKE
     allx, ally = np.r_[g["ctx"][0], g["eff"][0]], np.r_[g["ctx"][1], g["eff"][1]]
-    v_poster = map_view(allx, ally, CARD_W, CARD_H, "right", point=point)
-    v_thumb = map_view(allx, ally, 160, 90, "full", thumb=True)
+    v_poster = poster_view(allx, ally, point)
+    v_thumb = map_view(allx, ally, 160, 90, C.FULL, thumb=True)
     tf = replay.track_file(r["id"], cat.key, cat.unit, r["value"], tr, r["t0"], r["t1"], v_poster, g["wrap"], coarse)
     prof, prof_label = _profile(tf, cat)
     title = animal_title(r)
@@ -461,13 +553,26 @@ def replay_block(rec: dict) -> str:
     cells = "".join(f'<div class="rc"><span class="rl">{esc(label)}</span><b data-k="{k}">{esc(v)}</b></div>'
                     for k, label, v in readout(rec["_track"]))
     sun = '<div class="rc rsun" hidden><span class="rl">Sun</span><b data-k="sun">Day</b></div>' if rec["_track"]["night"] else ""
-    return f"""<div class="replay" data-track="track.json" data-final="{esc(rec['display']['value'])}">
-{poster(rec, "")}
+    return f"""<div class="replay" data-track="track.json" data-sil="../../{rec['_art'].sil_path}" data-final="{esc(rec['display']['value'])}">
+{poster(rec, "../../")}
 <div class="ro">{cells}{sun}
 <div class="rctl"><button type="button" class="b-play" aria-label="Play the replay">{ICON_PLAY}</button>
 <button type="button" class="b-restart" aria-label="Restart the replay">{ICON_RESTART}</button>
 <span class="spd" role="group" aria-label="Replay speed"><button type="button" data-s="0.5" aria-pressed="false">0.5×</button><button type="button" data-s="1" aria-pressed="true">1×</button><button type="button" data-s="2" aria-pressed="false">2×</button></span></div></div>
 </div>"""
+
+
+def animal_head(rec: dict, rel: str, sci: str) -> str:
+    """Record page header: the photo with the animal's name on it, or the silhouette on the night colour."""
+    a: Art = rec["_art"]
+    an = rec["animal"]
+    species = esc(an["common"]) if an["name"] else ""
+    who = (f'<div class="ah-who">{"" if a.photo else sil_mark(a, rel, "ah-mark")}<p class="ah-name">{esc(an["title"])}</p>'
+           f'<p class="ah-sp">{species}{" · " if species else ""}{sci}</p></div>')
+    if not a.photo:
+        return f'<header class="ahead ah-sil">{sil_mark(a, rel, "ah-big")}{who}</header>'
+    return (f'<header class="ahead">{photo_img(a, "wide", "(max-width: 1120px) 100vw, 1120px", rel, "ah-img", eager=True)}'
+            f'{who}<p class="ah-credit">Photo: {credit_html(a.photo)}</p></header>')
 
 
 def _record_page(rec: dict, others: list[dict], base_url: str, video: bool) -> str:
@@ -503,11 +608,11 @@ def _record_page(rec: dict, others: list[dict], base_url: str, video: bool) -> s
     recipe = json.dumps(rec["reproduce"], indent=1)
     body = f"""
 <div class="rec">
+{animal_head(rec, rel, sci)}
 {replay_block(rec)}
 <section class="headline">
 <p class="kicker">{scope_links}</p>
 <h1>{esc(rec["hook"])}</h1>
-<p class="sub"><b>{esc(a["title"])}</b>, {esc(a["common"].lower() if a["common"] else "")} ({sci})</p>
 {countries}
 </section>
 <section class="block profile-block"><h2>{esc(rec["_profile_label"])}</h2><div class="scrub">{rec["_profile"]}<span class="cur" hidden></span></div>
@@ -543,7 +648,7 @@ def race_subtitle(cat: Category, n: int) -> str:
     return f"Top {n}, distance against time, same start"
 
 
-def race(cat: Category, recs: list[dict]) -> tuple[str, dict] | None:
+def race(cat: Category, recs: list[dict], rel: str) -> tuple[str, dict] | None:
     """Markup and race.json of a board race. The markup shows the finished race without JS."""
     kind = race_kind(cat.key)
     if kind is None:
@@ -552,11 +657,12 @@ def race(cat: Category, recs: list[dict]) -> tuple[str, dict] | None:
     if kind == "map":
         lon = np.concatenate([np.asarray(r["_track"]["lon"])[r["_track"]["eff"][0]:r["_track"]["eff"][1] + 1] for r in recs])
         lat = np.concatenate([np.asarray(r["_track"]["lat"])[r["_track"]["eff"][0]:r["_track"]["eff"][1] + 1] for r in recs])
-        v = C.frame(lon, lat, RACE_W, RACE_H, "full", min_span_deg=4.0)
+        v = C.frame(lon, lat, RACE_W, RACE_H, C.FULL, min_span_deg=4.0)
     for i, r in enumerate(recs, 1):
         view = v if kind == "map" else r["_thumb_view"]
         a = r["animal"]
         runners.append({"id": r["id"], "rank": i, "name": a["title"], "species": a["common"] if a["name"] else "",
+                        "sil": r["_art"].sil_path,
                         "display": f'{r["display"]["value"]} {r["display"]["unit"]}'} | replay.race_runner(r["_track"], view))
     data = {"v": 1, "kind": kind, "category": cat.key, "title": cat.title, "unit": cat.unit,
             "finish": max(x["finish"] for x in runners), "runners": runners}
@@ -587,7 +693,7 @@ def race(cat: Category, recs: list[dict]) -> tuple[str, dict] | None:
             f'<p class="race-k">{race_subtitle(cat, len(recs))}</p>'
             f'<p class="race-clock" aria-hidden="true"></p>'
             f'<p class="race-brand"><span class="mark" aria-hidden="true"></span>{SITE_NAME}</p>')
-    html_ = f"""<section class="race" data-race="race.json" data-kind="{kind}" aria-label="Race of the top {len(recs)}">
+    html_ = f"""<section class="race" data-race="race.json" data-root="{rel}" data-kind="{kind}" aria-label="Race of the top {len(recs)}">
 <div class="race-stage">{art}{head}</div>
 <div class="rctl"><button type="button" class="b-play" aria-label="Play the race">{ICON_PLAY}</button>
 <button type="button" class="b-restart" aria-label="Restart the race">{ICON_RESTART}</button>
@@ -613,7 +719,7 @@ def _board_page(cat: Category, scope: str, recs: list[dict], scopes: dict, comp:
     for i, rec in enumerate(recs, 1):
         a = rec["animal"]
         rows.append(f"""<li><a href="{rel}r/{rec['id']}/">
-<span class="rk">{i}</span>{rec['_thumb']}
+<span class="rk">{i}</span>{rec['_thumb']}{avatar(rec['_art'], rel)}
 <span class="bwho"><b>{esc(a['title'])}</b><span>{esc(a['common'] if a['name'] else a['taxon'])}</span></span>
 <span class="val">{esc(rec['display']['value'])}<small>{esc(rec['display']['unit'])}</small></span>
 <span class="when">{esc(rec['when'])}</span></a></li>""")
@@ -637,21 +743,73 @@ def _home_page(boards: dict, recs: dict, base_url: str) -> str:
         if "all" not in boards.get(key, {}):
             continue
         top = recs[boards[key]["all"][0]]
-        cards.append(f'<a class="card" href="r/{top["id"]}/" data-track="r/{top["id"]}/track.json" data-bare="r/{top["id"]}/card-bare.jpg">'
+        cards.append(f'<a class="card" href="r/{top["id"]}/" data-track="r/{top["id"]}/track.json" data-sil="{top["_art"].sil_path}" data-bare="r/{top["id"]}/card-bare.jpg">'
                      f'<img src="r/{top["id"]}/card.png" width="{CARD_W}" height="{CARD_H}" '
                      f'loading="lazy" alt="{esc(top["share_title"])}"></a>')
-        index.append(f'<li><a href="b/{key}/"><span class="bt">{esc(cat.title)}</span>'
+        index.append(f'<li><a href="b/{key}/">{avatar(top["_art"], rel)}<span class="bt">{esc(cat.title)}</span>'
                      f'<span class="bv">{esc(top["display"]["value"])} {esc(top["display"]["unit"])}</span>'
                      f'<span class="bw">{esc(top["animal"]["title"])}{" · " + esc(top["animal"]["common"]) if top["animal"]["name"] else ""}</span></a></li>')
     cov = _coverage()
-    body = f"""<section class="hero"><h1>Personal records of wild animals.</h1>
-<p>{esc(TAGLINE)} Computed from {cov['packages']:,} open GPS and Argos data packages, {cov['animals']:,} animals.</p></section>
+    body = f"""<section class="hero"><div class="hero-t"><h1>Personal records of wild animals.</h1>
+<p>{esc(TAGLINE)} Computed from {cov['packages']:,} open GPS and Argos data packages, {cov['animals']:,} animals.</p></div>
+{_parade(boards, recs)}</section>
 <section class="cards">{"".join(cards[:8])}</section>
 <section id="boards" class="boards"><h2>All boards</h2><ul class="board-index">{"".join(index)}</ul></section>
 <section class="cards more">{"".join(cards[8:])}</section>"""
     first = recs[boards[next(iter(boards))]["all"][0]]
     meta = social_meta(SITE_NAME, TAGLINE, base_url + "/", f"{base_url}/r/{first['id']}/card.png")
     return page(rel, f"{SITE_NAME}: personal records of wild animals", body, meta, "page-home", script=True)
+
+
+PARADE_SIZE = 6
+
+
+def _parade(boards: dict, recs: dict) -> str:
+    """Photo tiles of number ones on the all-species boards, one per taxon, in board order."""
+    seen, tiles = set(), []
+    for key, cat in BY_KEY.items():
+        if "all" not in boards.get(key, {}):
+            continue
+        top = recs[boards[key]["all"][0]]
+        a: Art = top["_art"]
+        if not a.photo or top["animal"]["taxon"] in seen:
+            continue
+        seen.add(top["animal"]["taxon"])
+        tiles.append(f'<a class="pt" href="r/{top["id"]}/">'
+                     f'{photo_img(a, "square", "(max-width: 760px) 34vw, 190px", "", eager=len(tiles) < 3)}'
+                     f'<span class="pt-v">{esc(top["display"]["value"])}<small>{esc(top["display"]["unit"])}</small></span>'
+                     f'<span class="pt-c">{esc(cat.title)}</span><span class="pt-w">{esc(top["animal"]["common"])}</span></a>')
+        if len(tiles) == PARADE_SIZE:
+            break
+    return f'<div class="parade">{"".join(tiles)}</div>'
+
+
+def _credits_page(arts: dict[str, Art]) -> str:
+    rel = "../"
+    names = taxa.curated_names()
+    rows = []
+    for t in sorted(arts, key=lambda t: names.get(t, t)):
+        a = arts[t]
+        for e in (a.photo, a.sil):
+            if not e:
+                continue
+            f = e.files[0]
+            prev = (f'<img src="{rel}art/{f.path}" width="{f.width}" height="{f.height}" alt="" loading="lazy">'
+                    if e.kind is ArtKind.PHOTO else sil_mark(a, rel))
+            shows = "" if e.shows == t else f' (shows <i>{esc(e.shows)}</i>)'
+            files = " ".join(x.path for x in e.files)
+            rows.append(f'<li data-files="{esc(files)}"><span class="cr-prev cr-{e.kind.value}">{prev}</span>'
+                        f'<span class="cr-what"><b>{esc(names.get(t, t))}</b> <i>{esc(t)}</i>{shows}</span>'
+                        f'<span class="cr-by">{"Photo" if e.kind is ArtKind.PHOTO else "Silhouette"} by '
+                        f'{esc(e.creator)}. <a href="{esc(e.licence_url)}">{esc(e.licence)}</a>. '
+                        f'<a href="{esc(e.source_url)}">Source</a>. {esc(e.change)}.</span></li>')
+    body = f"""<article class="prose credits"><h1>Image credits</h1>
+<p>Photos come from <a href="https://commons.wikimedia.org">Wikimedia Commons</a> and silhouettes from <a href="https://www.phylopic.org">PhyloPic</a>.
+Each image has a licence that permits reuse with attribution or has no conditions: CC0, public domain, CC BY or CC BY-SA.
+The site shows the photos cropped and resized, and the silhouettes in other colours.
+A share card or a video that contains a photo has the licence of that photo.</p>
+<ul class="cr">{"".join(rows)}</ul></article>"""
+    return page(rel, f"Image credits · {SITE_NAME}", body, "", "page-credits")
 
 
 def _coverage() -> dict:

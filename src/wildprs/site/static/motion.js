@@ -116,6 +116,53 @@
     g.globalAlpha = .16; g.lineWidth = 13 * k; g.stroke();
     g.globalAlpha = 1; g.lineWidth = 5 * k; g.stroke();
   }
+  /* ---------- silhouettes: SVG files that face right; drawn tinted, mirrored to face the way of travel ---------- */
+  const SIL = new Map(), TINT = new Map();
+  function silhouette(url) {
+    if (!SIL.has(url)) SIL.set(url, new Promise((ok, no) => {
+      const im = new Image();
+      im.onload = () => ok(im); im.onerror = () => no(new Error(`silhouette ${url}`));
+      im.src = url;
+    }));
+    return SIL.get(url);
+  }
+  function silBox(im, size) {      // a wide animal (whale, bat) gets more width and less height than a tall one
+    const r = im.naturalWidth / im.naturalHeight;
+    let w = size * Math.sqrt(r), h = size / Math.sqrt(r);
+    if (w > 1.9 * size) { h *= 1.9 * size / w; w = 1.9 * size; }
+    if (h > 1.3 * size) { w *= 1.3 * size / h; h = 1.3 * size; }
+    return [w, h];
+  }
+  function tinted(im, colour, w, h) {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const key = `${im.src}|${colour}|${Math.round(w * dpr)}`;
+    let c = TINT.get(key);
+    if (!c) {
+      c = document.createElement('canvas');
+      c.width = Math.max(1, Math.round(w * dpr)); c.height = Math.max(1, Math.round(h * dpr));
+      const x = c.getContext('2d');
+      x.drawImage(im, 0, 0, c.width, c.height);
+      x.globalCompositeOperation = 'source-in'; x.fillStyle = colour; x.fillRect(0, 0, c.width, c.height);
+      TINT.set(key, c);
+    }
+    return c;
+  }
+  function drawSil(g, im, x, y, size, colour, left, edge = C.night) {   // centred on (x, y), with an outline
+    const [w, h] = silBox(im, size);
+    const o = Math.max(1.2, size * .05);
+    g.save(); g.translate(x, y); if (left) g.scale(-1, 1);
+    const back = tinted(im, edge, w, h), fore = tinted(im, colour, w, h);
+    for (const [dx, dy] of [[-o, 0], [o, 0], [0, -o], [0, o], [-o * .7, -o * .7], [o * .7, o * .7], [-o * .7, o * .7], [o * .7, -o * .7]])
+      g.drawImage(back, -w / 2 + dx, -h / 2 + dy, w, h);
+    g.drawImage(fore, -w / 2, -h / 2, w, h);
+    g.restore();
+    return [w, h];
+  }
+  function facing() {              // left or right from the sign of dx; small moves keep the last direction
+    let left = false;
+    return (dx, eps) => { if (Math.abs(dx) > eps) left = dx < 0; return left; };
+  }
+
   function dot(g, x, y, r, fill, stroke, sw) {
     g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2);
     if (fill) { g.fillStyle = fill; g.fill(); }
@@ -124,7 +171,8 @@
 
   /* ---------- record replay ---------- */
   async function initReplay(root) {
-    const tr = await (await fetch(root.dataset.track)).json();
+    const [tr, sil] = await Promise.all([fetch(root.dataset.track).then(r => r.json()), silhouette(root.dataset.sil)]);
+    const face = facing();
     const poster = root.querySelector('.poster');
     const num = poster.querySelector('.num');
     const numText = num.firstChild;
@@ -166,8 +214,11 @@
       g.globalAlpha = 1;
       dot(g, P[0][0], P[0][1], 9 * k, C.night, C.trk0, 5 * k);
       if (tr.coarse) dot(g, head[0], head[1], 22 * k, 'rgba(255,255,255,.14)', 'rgba(255,255,255,.6)', 2 * k);
-      dot(g, head[0], head[1], (p >= 1 ? 11 : 10) * k, C.trk1, C.night, 4 * k);
-      if (p < 1) dot(g, head[0], head[1], (16 + 8 * ((tau / span * 6) % 1)) * k, null, 'rgba(255,201,74,.45)', 2 * k);
+      const size = Math.max(26, 64 * k * FS);
+      if (p < 1) dot(g, head[0], head[1], size * (.62 + .3 * ((tau / span * 6) % 1)), null, 'rgba(255,201,74,.4)', 2 * k);
+      const [bi, bf] = locate(T, tau - span * .015);
+      const back = proj(lerp(tr.lon, bi, bf), lerp(tr.lat, bi, bf));
+      drawSil(g, sil, head[0], head[1], size, C.trk1, face(head[0] - back[0], .5));
       // numbers
       if (p >= 1) {
         numText.nodeValue = root.dataset.final;
@@ -215,6 +266,9 @@
   /* ---------- board race ---------- */
   async function initRace(root) {
     const R = await (await fetch(root.dataset.race)).json();
+    const sils = Object.fromEntries(await Promise.all([...new Set(R.runners.map(r => r.sil))]
+      .map(async u => [u, await silhouette(root.dataset.root + u)])));
+    const faces = new Map(R.runners.map(r => [r.id, facing()]));
     const stage = root.querySelector('.race-stage'), clockEl = root.querySelector('.race-clock');
     const cv = document.createElement('canvas'); cv.className = 'route';
     stage.querySelector('svg').after(cv);
@@ -251,11 +305,20 @@
         for (const rn of [...runners].reverse()) {
           const [i, f] = pos(rn, tau);
           const hx = lerp(rn.x, i, f) * ku, hy = lerp(rn.y, i, f) * ku;
-          const r = Math.max(8, 13 * k);
-          dot(g, hx, hy, r, colour(rn), C.night, 3 * k);
+          const [j, fj] = pos(rn, Math.max(0, Math.min(tau, rn.finish) - R.finish * .01));
+          const left = faces.get(rn.id)(hx - lerp(rn.x, j, fj) * ku, .3);
+          // the podium carries the rank badges; the rest of the field stays small so that a tight pack reads
+          const podium = rn.rank <= 3;
+          const size = podium ? Math.max(22, 40 * k) : Math.max(13, 22 * k);
+          g.globalAlpha = podium ? 1 : .8;
+          const [w, h] = drawSil(g, sils[rn.sil], hx, hy, size, colour(rn), left);
+          g.globalAlpha = 1;
+          if (!podium) continue;
+          const r = Math.max(7, 10 * k), bx = hx + (left ? 1 : -1) * w * .42, by = hy - h * .5 - r * .2;
+          dot(g, bx, by, r, colour(rn), C.night, 2.5 * k);
           g.fillStyle = C.night; g.textAlign = 'center';
-          g.font = `900 ${Math.max(10, 14 * k)}px WS, system-ui, sans-serif`;
-          g.fillText(String(rn.rank), hx, hy + .5);
+          g.font = `900 ${Math.max(9, 12 * k)}px WS, system-ui, sans-serif`;
+          g.fillText(String(rn.rank), bx, by + .5);
         }
       } else {
         const [x0p, y0, x1p, y1p] = R.plot;
@@ -285,7 +348,8 @@
           g.lineJoin = g.lineCap = 'round'; g.stroke(); g.globalAlpha = 1;
           heads.push({ rn, x: X(ht), y: Y(hd), d: hd });
         }
-        for (const h of heads) dot(g, h.x, h.y, 5 * k, colour(h.rn), C.night, 2 * k);
+        const ss = Math.max(16, 26 * k);
+        for (const h of heads) drawSil(g, sils[h.rn.sil], h.x, h.y, ss, colour(h.rn), false);
         // labels at the heads, pushed apart so that they do not overlap
         heads.sort((a, b) => a.y - b.y);
         const fs = Math.max(compact ? 10 : 11, 14 * k), gap = fs * 1.35; let last = -1e9;
@@ -297,7 +361,7 @@
           g.fillStyle = colour(h.rn); g.globalAlpha = h.rn.rank <= 3 || fin ? 1 : .75;
           g.font = `${h.rn.rank <= 3 ? 900 : 700} ${fs}px WS, system-ui, sans-serif`;
           const label = compact ? String(h.rn.rank) : `${h.rn.rank}  ${h.rn.name}  ${fin ? h.rn.display : fmtKmShort(h.d)}`;
-          g.fillText(label, h.x + 9 * k, h.ly);
+          g.fillText(label, h.x + ss * .9, h.ly);
           g.globalAlpha = 1;
         }
         thumbs.forEach((c, idx) => {
@@ -309,12 +373,17 @@
       // map race: finish times beside the podium markers while racing, the standings when it ends
       if (R.kind === 'map' && p < 1) {
         g.textAlign = 'left'; g.textBaseline = 'middle';
-        g.font = `900 ${Math.max(10, 15 * k)}px WS, system-ui, sans-serif`;
-        for (const rn of done) if (rn.rank <= 3) {
+        const fs = Math.max(10, 15 * k), off = Math.max(22, 40 * k) * .85;
+        g.font = `900 ${fs}px WS, system-ui, sans-serif`;
+        const labels = done.filter(rn => rn.rank <= 3).map(rn => {
           const [i, f] = pos(rn, tau);
-          const hx = lerp(rn.x, i, f) * ku, hy = lerp(rn.y, i, f) * ku;
-          g.lineWidth = 4 * k; g.strokeStyle = C.night; g.strokeText(rn.display, hx + 18 * k, hy);
-          g.fillStyle = colour(rn); g.fillText(rn.display, hx + 18 * k, hy);
+          return { rn, x: lerp(rn.x, i, f) * ku + off, y: lerp(rn.y, i, f) * ku };
+        }).sort((a, b) => a.y - b.y);
+        let last = -1e9;
+        for (const l of labels) {     // pushed apart: markers that finish at the same place share one spot
+          l.y = Math.max(l.y, last + fs * 1.3); last = l.y;
+          g.lineWidth = 4 * k; g.strokeStyle = C.night; g.strokeText(l.rn.display, l.x, l.y);
+          g.fillStyle = colour(l.rn); g.fillText(l.rn.display, l.x, l.y);
         }
       }
       if (R.kind === 'map' && p >= 1 && !compact) {
@@ -366,11 +435,13 @@
     const img = card.querySelector('img');
     const bare = new Image(); bare.src = card.dataset.bare;
     let tr;
-    try { [tr] = await Promise.all([fetch(card.dataset.track).then(r => r.json()), bare.decode()]); } catch { return; }
+    let sil;
+    try { [tr, , sil] = await Promise.all([fetch(card.dataset.track).then(r => r.json()), bare.decode(), silhouette(card.dataset.sil)]); } catch { return; }
     const cv = document.createElement('canvas'); cv.className = 'route';
     card.append(cv);
     img.src = bare.src;
     const n = tr.t.length, span = tr.t[n - 1] - tr.t[0];
+    const face = facing();
     let start = 0;
     const frame = now => {
       start ||= now;
@@ -385,7 +456,8 @@
       P.push(head);
       drawRoute(g, P, head, k, { end: proj(tr.lon[n - 1], tr.lat[n - 1]) });
       if (!tr.coarse) dot(g, P[0][0], P[0][1], 9 * k, C.night, C.trk0, 5 * k);
-      dot(g, head[0], head[1], 11 * k, C.trk1, C.night, 5 * k);
+      const back = P[Math.max(0, P.length - 3)];
+      drawSil(g, sil, head[0], head[1], Math.max(22, 64 * k), C.trk1, face(head[0] - back[0], .5));
       if (p < 1) requestAnimationFrame(frame);
     };
     requestAnimationFrame(frame);

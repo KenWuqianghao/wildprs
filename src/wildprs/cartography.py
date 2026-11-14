@@ -30,21 +30,21 @@ class MapView:
         return (np.asarray(lon) - self.lon0) * self.kx * self.scale, (self.lat1 - np.asarray(lat)) * self.scale
 
 
-def frame(lon: np.ndarray, lat: np.ndarray, w: float, h: float, place: str = "right", min_span_deg: float = 3.0) -> MapView:
-    """Fit the track into the frame. 'right' keeps the left 40 % free for the poster text."""
+Box = tuple[float, float, float, float]
+RIGHT: Box = (0.42, 0.11, 0.94, 0.89)  # the left 40 % stays free for the poster text
+FULL: Box = (0.08, 0.10, 0.92, 0.90)
+
+
+def frame(lon: np.ndarray, lat: np.ndarray, w: float, h: float, box: Box = RIGHT, min_span_deg: float = 3.0) -> MapView:
+    """Fit the track into box, given as (left, top, right, bottom) fractions of the frame."""
     lat_c = float(np.clip((lat.min() + lat.max()) / 2, -70, 70))
     kx = math.cos(math.radians(lat_c))
     tw = max((lon.max() - lon.min()) * kx, min_span_deg)
     th = max(lat.max() - lat.min(), min_span_deg * 0.6)
-    if place == "right":
-        avail_w, avail_h, x_off = 0.52 * w, 0.78 * h, 0.42 * w
-    else:
-        avail_w, avail_h, x_off = 0.84 * w, 0.80 * h, 0.08 * w
-    scale = min(avail_w / tw, avail_h / th)
-    cx_units = x_off + (avail_w - tw * scale) / 2 + tw * scale / 2
-    lon_c = (lon.min() + lon.max()) / 2
-    lat_top = (lat.max() + lat.min()) / 2 + (h / 2) / scale
-    lon0 = lon_c - cx_units / (kx * scale)
+    x0, y0, x1, y1 = box
+    scale = min((x1 - x0) * w / tw, (y1 - y0) * h / th)
+    lon0 = (lon.min() + lon.max()) / 2 - (x0 + x1) / 2 * w / (kx * scale)
+    lat_top = (lat.max() + lat.min()) / 2 + (y0 + y1) / 2 * h / scale
     return MapView(lon0, lat_top, kx, scale, w, h)
 
 

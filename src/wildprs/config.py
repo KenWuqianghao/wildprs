@@ -17,10 +17,12 @@ RECORDS = DATA / "records"
 AUDIT = DATA / "audit"
 GEO = DATA / "geo"
 VERIFY = DATA / "verify"
+ART = DATA / "art"
 LOG = DATA / "log" / "progress.log"
 
 LABELS_FILE = APP / "labels.toml"
 NAMES_FILE = APP / "names.toml"
+ART_FILE = APP / "art.toml"
 
 REPO_API = "https://datarepository.movebank.org/server/api"
 SOURCE_URL = "https://github.com/KenWuqianghao/wildprs"

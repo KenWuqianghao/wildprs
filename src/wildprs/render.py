@@ -30,6 +30,15 @@ def browser(p):
     return p.chromium.launch(executable_path=CHROMIUM) if CHROMIUM else p.chromium.launch()
 
 
+# Fonts, photos and the silhouette masks (CSS mask images do not delay the load event).
+READY = """Promise.all([document.fonts.ready,
+  ...[...document.images].map(i => i.decode().catch(() => {})),
+  ...[...document.querySelectorAll('.sil')].map(e => new Promise(ok => {
+    const im = new Image(); im.onload = im.onerror = ok;
+    im.src = getComputedStyle(e).getPropertyValue('--sil').trim().replace(/^url\\(["']?|["']?\\)$/g, '');
+  }))])"""
+
+
 def render_cards(site: Path, ids: list[str], bare_ids: list[str] = ()) -> int:
     """card.png for each record; card-bare.jpg (the card without the route) for the home page cards,
     which draw their route on top of it."""
@@ -41,12 +50,12 @@ def render_cards(site: Path, ids: list[str], bare_ids: list[str] = ()) -> int:
             pg = b.new_page(viewport={"width": 1200, "height": 675}, device_scale_factor=1)
             for rid in ids:
                 pg.goto(f"{base}/r/{rid}/poster.html", wait_until="load")
-                pg.evaluate("document.fonts.ready")
+                pg.evaluate(READY)
                 pg.screenshot(path=str(site / "r" / rid / "card.png"), clip={"x": 0, "y": 0, "width": 1200, "height": 675})
                 n += 1
             for rid in bare_ids:
                 pg.goto(f"{base}/r/{rid}/poster-bare.html", wait_until="load")
-                pg.evaluate("document.fonts.ready")
+                pg.evaluate(READY)
                 pg.screenshot(path=str(site / "r" / rid / "card-bare.jpg"), type="jpeg", quality=82,
                               clip={"x": 0, "y": 0, "width": 1200, "height": 675})
             b.close()

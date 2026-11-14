@@ -152,6 +152,16 @@ def cmd_audit(a):
     print(s)
 
 
+def cmd_art(a):
+    from . import art
+    try:
+        s = art.run(force=a.force, only=a.only.split(",") if a.only else None)
+    except art.ArtError as e:
+        sys.exit(f"art: {e}")
+    config.log(f"art done: {s}")
+    print(s)
+
+
 def cmd_site(a):
     from . import site
     s = site.build(base_url=a.base_url, png=not a.no_png)
@@ -208,6 +218,10 @@ def main(argv=None):
         s.set_defaults(fn=fn)
     s = sub.add_parser("audit", help="set the state of each record, build the boards")
     s.set_defaults(fn=cmd_audit)
+    s = sub.add_parser("art", help="fetch the animal photos and silhouettes that art.toml names")
+    s.add_argument("--force", action="store_true", help="fetch every file again")
+    s.add_argument("--only", help="comma-separated taxa to fetch again")
+    s.set_defaults(fn=cmd_art)
     s = sub.add_parser("site", help="build the static site")
     s.add_argument("--base-url", default="http://localhost:8000", help="absolute URL of the site root")
     s.add_argument("--no-png", action="store_true", help="skip the card images")
