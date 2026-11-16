@@ -1,398 +1,240 @@
-# Animal images. Each key is a taxon name from names.toml.
+# Animal photos. Each key is a taxon name from names.toml. A taxon with no entry has no photo.
 # photo: Wikimedia Commons file title. focus: [x, y] point (0 to 1) that crops keep in frame.
 # photo_taxon: the taxon the photo shows, when it differs from the key.
-# silhouette: PhyloPic image UUID. silhouette_taxon: the taxon that image shows, when it differs.
-# faces: the direction the silhouette faces in the source file (left or right).
 
 ["Anser albifrons"]
 photo = "File:Greater white-fronted goose in flight-1045.jpg"
 focus = [0.4, 0.45]
-silhouette = "6647bf96-4733-4bc4-91d8-d52d6f1e4ee0"
-faces = "right"
 
 ["Aptenodytes forsteri"]
 photo = "File:Penguin in Antarctica jumping out of the water.jpg"
 focus = [0.68, 0.42]
-silhouette = "9e11df09-bd24-463a-9020-bdce4111537f"
-faces = "right"
 
 ["Aquila nipalensis"]
 photo = "File:Steppe-Eagle.jpg"
 focus = [0.37, 0.5]
-silhouette = "c9f94d9a-2e84-4d27-a4fd-ee4ae9b94ff6"
-faces = "right"
 
 ["Balaenoptera musculus"]
 photo = "File:2023-08-04 Blue whale Isfjord Svalbard 02.jpg"
 focus = [0.4, 0.5]
-silhouette = "16969246-31e0-48e3-90ff-cad9a8746073"
-faces = "right"
 
 ["Balaenoptera physalus"]
 photo = "File:Whale watching Tadoussac 01.jpg"
 focus = [0.42, 0.5]
-silhouette = "8366482f-d41c-4ab2-8403-3d70fb04ad5f"
-faces = "right"
 
 ["Bartramia longicauda"]
 photo = "File:99997 Upland Sandpiper at sunrise.jpg"
 focus = [0.62, 0.45]
-silhouette = "6fdb3ece-9147-4300-b477-5596bc2fd677"
-faces = "left"
 
 ["Bubo scandiacus"]
 photo = "File:Bubo scandiacus Canoga.jpg"
 focus = [0.5, 0.42]
-silhouette = "ea71ef37-b1ce-428b-84d0-438d0d954f32"
-faces = "left"
-
-["Canis"]
-silhouette = "1a9332fc-aeac-43ae-a318-80acbf89b662"
-faces = "left"
 
 ["Canis latrans"]
 photo = "File:Canis latrans 8-1 (53187442020).jpg"
 focus = [0.45, 0.5]
-silhouette = "f787cef9-1801-4387-8f6c-4234b5c8d72a"
-faces = "right"
 
 ["Canis lupus"]
 photo = "File:WolfRunningInSnow.jpg"
 focus = [0.6, 0.45]
-silhouette = "11658f8c-e0c2-4612-85ef-bdc44acdae0b"
-silhouette_taxon = "Canis (lupus)"
-faces = "right"
 
 ["Canis mesomelas"]
 photo = "File:135 Black-backed jackal hunting for food at Cape cross Photo by Giles Laurent.jpg"
 focus = [0.4, 0.45]
-silhouette = "40bed9cb-963c-4bc6-8f75-c575e2e94332"
-silhouette_taxon = "Lupulella mesomelas"
-faces = "right"
 
 ["Caracal caracal"]
 photo = "File:Caracal Caracal-001.jpg"
 focus = [0.55, 0.45]
-silhouette = "0495f1b4-f9a0-4ba7-ae8f-bd89aa104c42"
-faces = "right"
 
 ["Caretta caretta"]
 photo = "File:Carett-zak3.jpg"
 focus = [0.35, 0.45]
-silhouette = "b3e35f7c-af3b-44dc-9680-82bd2d6392fb"
-faces = "left"
 
 ["Cathartes aura"]
 photo = "File:Turkey vulture (Cathartes aura) in flight.JPG"
 focus = [0.5, 0.5]
-silhouette = "72a6434a-3ed4-43f0-b6ef-b3146c2f07ae"
-faces = "left"
 
 ["Cervus elaphus"]
 photo = "File:014 Wild Red Deer Switzerland Photo by Giles Laurent.jpg"
 focus = [0.45, 0.5]
-silhouette = "cc03f5c2-933f-4c40-9c64-7f8727556fdb"
-faces = "right"
 
 ["Chelonia mydas"]
 photo = "File:Green sea turtle (Chelonia mydas) Moorea.jpg"
 focus = [0.55, 0.5]
-silhouette = "95a56d8c-896f-44ed-bf00-5f07d64ca6f8"
-faces = "left"
-
-["Chelonoidis"]
-silhouette = "07842f70-820e-43ec-91d9-f9d09d0df987"
-faces = "left"
 
 ["Chelonoidis donfaustoi"]
 photo = "File:Chelonoidis donfaustoi (15072109070).jpg"
 focus = [0.5, 0.5]
-silhouette = "760cced8-4303-49b4-bc4c-bf74ec652304"
-silhouette_taxon = "Chelonoidis carbonarius"
-faces = "right"
 
 ["Chelonoidis hoodensis"]
 photo = "File:Galápagos giant tortoise, moving (Chelonoidis niger hoodensis).jpg"
 focus = [0.5, 0.5]
-silhouette = "07842f70-820e-43ec-91d9-f9d09d0df987"
-silhouette_taxon = "Chelonoidis abingdonii"
-faces = "left"
 
 ["Chelonoidis porteri"]
 photo = "File:Santa Cruz giant tortoise 02.jpg"
 focus = [0.45, 0.55]
-silhouette = "760cced8-4303-49b4-bc4c-bf74ec652304"
-silhouette_taxon = "Chelonoidis carbonarius"
-faces = "right"
 
 ["Ciconia ciconia"]
 photo = "File:Ciconia ciconia - 01.jpg"
 focus = [0.5, 0.45]
-silhouette = "0f0f45a7-06d8-416b-9b82-87140ad37307"
-faces = "right"
 
 ["Circaetus gallicus"]
 photo = "File:CircaetusGallicus.jpg"
 focus = [0.5, 0.5]
-silhouette = "9cf25c45-c312-4a68-95b0-0f0ec37534c6"
-faces = "right"
 
 ["Connochaetes taurinus"]
 photo = "File:040 Blue wildebeest with wattled starlings in the Serengeti National Park Photo by Giles Laurent.jpg"
 focus = [0.55, 0.5]
-silhouette = "10e283ad-5f6b-4e14-8e1a-a3476b992474"
-faces = "right"
 
 ["Cygnus columbianus"]
 photo = "File:Tundra Swan (23984558743).jpg"
 focus = [0.5, 0.5]
-silhouette = "0f9d6b91-1a7c-4743-a6d8-64391c25a95c"
-faces = "right"
 
 ["Egretta tricolor"]
 photo = "File:Egretta tricolor, Marco Island, Florida.jpg"
 focus = [0.5, 0.5]
-silhouette = "870b2111-9eef-42e6-9e22-a8f67bbb444a"
-silhouette_taxon = "Egretta garzetta"
-faces = "left"
 
 ["Eidolon helvum"]
 photo = "File:Eidolon helvum 283616286.jpg"
 focus = [0.42, 0.45]
-silhouette = "a0825780-61e8-4649-8d96-78b111563c4e"
-silhouette_taxon = "Rousettus aegyptiacus"
-faces = "right"
 
 ["Equus quagga"]
 photo = "File:Equus quagga burchellii - Etosha, 2014.jpg"
 focus = [0.6, 0.5]
-silhouette = "81caf94e-5cbe-4e5e-8101-545abea2bfc0"
-faces = "left"
 
 ["Eretmochelys imbricata"]
 photo = "File:Tortuga carey (Eretmochelys imbricata), islas Ad Dimaniyat, Omán, 2024-08-13, DD 69.jpg"
 focus = [0.5, 0.5]
-silhouette = "f38583f2-b978-4bfe-afba-7bcd18efac60"
-faces = "right"
 
 ["Falco peregrinus"]
 photo = "File:The Peregrine Falcon a Living Missile Bird.jpg"
 focus = [0.6, 0.5]
-silhouette = "b961c530-3960-4b4c-89d8-33b48ffaeb9b"
-faces = "right"
 
 ["Falco rusticolus"]
 photo = "File:Gyrfalcon (Falco rusticolus) (6383387039).jpg"
 focus = [0.52, 0.45]
-silhouette = "d0aa8625-dfe3-4232-85de-724dba6542b1"
-faces = "right"
 
 ["Gulo gulo"]
 photo = "File:\"Hunting\" (48119658696).jpg"
 focus = [0.4, 0.5]
-silhouette = "bee678d0-5742-430e-9a59-e877a47eaaf1"
-faces = "right"
 
 ["Gyps himalayensis"]
 photo = "File:Himalayan Griffon Soaring over Ghusa Village, Api Nampa Conservation Area.jpg"
 focus = [0.5, 0.45]
-silhouette = "609b0780-ac19-45a6-93e4-d50c0f7809ac"
-silhouette_taxon = "Gyps fulvus"
-faces = "right"
 
 ["Halichoerus grypus"]
 photo = "File:Kegelrobben auf Helgoland.jpg"
 focus = [0.55, 0.4]
-silhouette = "44ee07ec-f829-49f9-b242-f4b92bb9cf73"
-faces = "right"
 
 ["Hydroprogne caspia"]
 photo = "File:Caspian Tern in flight in New Zealand.png"
 focus = [0.5, 0.45]
-silhouette = "834a54ad-faa8-4242-baf3-0b2e739258e5"
-faces = "right"
-
-["Hypsignathus monstrosus"]
-silhouette = "59899f62-b475-4f97-acc9-9c058965ed2a"
-silhouette_taxon = "Rousettus aegyptiacus"
-faces = "left"
 
 ["Larus fuscus"]
 photo = "File:Lesser black-backed gull (Larus fuscus graellsii).jpg"
 focus = [0.5, 0.5]
-silhouette = "0871b630-2dcd-4d35-b0a4-6a6551140553"
-silhouette_taxon = "Larus argentatus"
-faces = "right"
 
 ["Lepus arcticus"]
 photo = "File:Arctic Hare in Greenland.jpeg"
 focus = [0.55, 0.5]
-silhouette = "a87a3826-dc6c-4bad-8a89-82553e8e8ea0"
-faces = "right"
 
 ["Limosa haemastica"]
 photo = "File:Godwits Huron Wetland Management District (52829957013).jpg"
 focus = [0.3, 0.55]
-silhouette = "91973860-8980-4c6f-a146-58ff0cf33cf7"
-faces = "left"
 
 ["Loxodonta africana"]
 photo = "File:178 Male African bush elephant in Etosha National Park Photo by Giles Laurent.jpg"
 focus = [0.5, 0.5]
-silhouette = "b98f5417-9fa3-400f-b389-4bf1a961cce3"
-faces = "left"
 
 ["Lycalopex culpaeus"]
 photo = "File:Culpeo MC.jpg"
 focus = [0.45, 0.5]
-silhouette = "8b28eac0-15fc-4a3d-89c5-a6fcbd141a4a"
-faces = "right"
 
 ["Manta"]
 photo = "File:Giant Manta AdF.jpg"
 focus = [0.45, 0.4]
 photo_taxon = "Mobula birostris"
-silhouette = "0c459848-4b59-46ce-b5aa-ff0aa265c07f"
-silhouette_taxon = "Mobula birostris"
-faces = "right"
 
 ["Megaptera novaeangliae"]
 photo = "File:001 Humpback whale breaching in Ballena Marine National Park Photo by Giles Laurent.jpg"
 focus = [0.5, 0.45]
-silhouette = "ce70490a-79a5-47fc-afb9-834e45803ab4"
-silhouette_taxon = "Balaenoptera novaeangliae"
-faces = "left"
 
 ["Mirounga angustirostris"]
 photo = "File:Mirounga angustirostris calling 1 edit.jpg"
 focus = [0.58, 0.45]
-silhouette = "d5cb6d50-6d1e-4e9c-a9c2-4a4e6fe025a1"
-faces = "right"
-
-["Mobula"]
-silhouette = "43f5d75b-ac89-4922-9572-37cc68fcc946"
-faces = "right"
 
 ["Neophron percnopterus"]
 photo = "File:Neophron-1.jpg"
 focus = [0.5, 0.45]
-silhouette = "284766ad-99e2-477a-bf60-9da687b0bc51"
-faces = "right"
 
 ["Numenius arquata"]
 photo = "File:Curlew (Numenius arquata) in flight.jpg"
 focus = [0.47, 0.5]
-silhouette = "910114e1-39c6-4eae-87d5-fd702dc47161"
-faces = "left"
 
 ["Numenius madagascariensis"]
 photo = "File:Far Eastern Curlew (Numenius madagascariensis), Ola, Magadan Oblast, Russia 1.jpg"
 focus = [0.55, 0.45]
-silhouette = "b3f43d07-a214-4859-82fc-7eec69eeb6fe"
-faces = "left"
 
 ["Nyctalus noctula"]
 photo = "File:Nyctalus noctula - Große Abendsegler 02 (HS).jpg"
 focus = [0.5, 0.47]
-silhouette = "78e236f9-eeda-4082-87cc-c64802bb0974"
-faces = "right"
 
 ["Odocoileus hemionus"]
 photo = "File:Columbian black-tailed deer (Odocoileus hemionus columbianus) male Mt Rainier.jpg"
 focus = [0.45, 0.5]
-silhouette = "f889b336-9e67-4154-bc96-db4095a55be2"
-faces = "right"
 
 ["Ovis canadensis"]
 photo = "File:Bighorn sheep (Ovis canadensis canadensis) male Radium.jpg"
 focus = [0.52, 0.55]
-silhouette = "d4a64b49-7d0e-4b6b-bf5f-fc5565735112"
-faces = "right"
 
 ["Pandion haliaetus"]
 photo = "File:Osprey Fish Eye.png"
 focus = [0.5, 0.5]
-silhouette = "d25f13d6-722e-4da3-8073-0a86b8a15976"
-faces = "right"
 
 ["Phyllostomus hastatus"]
 photo = "File:Phyllostomus hastatus 403588345.jpg"
 focus = [0.5, 0.5]
-silhouette = "b164e90f-4750-4966-ac16-46321c8dff01"
-silhouette_taxon = "Trachops cirrhosus"
-faces = "right"
 
 ["Physeter macrocephalus"]
 photo = "File:Mother and baby sperm whale.jpg"
 focus = [0.4, 0.5]
-silhouette = "2756dc6c-79a4-4507-a486-3cc613671a54"
-faces = "left"
 
 ["Pteropus lylei"]
 photo = "File:YT 0072 Lyle's flying fox (35959946475).jpg"
 focus = [0.45, 0.5]
-silhouette = "9999598f-e938-4467-8088-57ef85bffe05"
-silhouette_taxon = "Pteropus medius"
-faces = "right"
 
 ["Pteropus melanotus"]
 photo = "File:Pteropus melanotus natalis - the Christmas Island flying-fox.jpg"
 focus = [0.47, 0.5]
-silhouette = "60d01694-35b2-43a2-88b3-9640d28043b9"
-silhouette_taxon = "Pteropus medius"
-faces = "right"
 
 ["Pteropus poliocephalus"]
 photo = "File:Grey headed flying fox - skimming water - AndrewMercer - DSC00530.jpg"
 focus = [0.5, 0.55]
-silhouette = "e4ab0438-794b-4030-8e2a-7b5c1f23bf03"
-faces = "left"
 
 ["Syncerus caffer"]
 photo = "File:African buffalo (Syncerus caffer caffer) male with cattle egret.jpg"
 focus = [0.5, 0.5]
-silhouette = "65c4a9b3-dcde-4f0f-9a1f-8d71e74be9ec"
-faces = "left"
-
-["Tadarida teniotis"]
-silhouette = "bfe2f90b-136c-4199-9552-9f85287df468"
-silhouette_taxon = "Chiroptera"
-faces = "right"
 
 ["Thalassarche chrysostoma"]
 photo = "File:2024 Thalassarche chrysostoma - Graukopfalbatros - by 2eight - 9SC6292.jpg"
 focus = [0.55, 0.5]
-silhouette = "b9cfa790-1642-49ad-b58c-2e663bc92353"
-faces = "right"
 
 ["Thalassoica antarctica"]
 photo = "File:Antarctic Petrel, Antarctic Peninsula (5940362516).jpg"
 focus = [0.55, 0.5]
-silhouette = "deb35243-40b4-42ae-b538-846d72e4ec98"
-silhouette_taxon = "Macronectes halli"
-faces = "right"
 
 ["Vulpes lagopus"]
 photo = "File:Vulpes lagopus in Iceland.jpg"
 focus = [0.36, 0.5]
-silhouette = "8e5dfa51-961d-48be-acda-fd7a00f0e565"
-faces = "right"
 
 ["Vulpes vulpes"]
 photo = "File:Red fox catches a vole - Tolyatti, Russia.jpg"
 focus = [0.5, 0.5]
-silhouette = "51b1b6e4-129d-41a6-bbbd-c3fab459c25f"
-faces = "left"
 
 ["Wallabia bicolor"]
 photo = "File:Wallabia bicolor Jenolan Caves.jpg"
 focus = [0.37, 0.55]
-silhouette = "eccfc4b3-faee-4384-b35b-64c788f30846"
-faces = "left"
 
 ["Zalophus californianus"]
 photo = "File:California sea lion in La Jolla (70568).jpg"
 focus = [0.45, 0.5]
-silhouette = "04302cd3-cbba-42e9-8c9b-f54938840b05"
-silhouette_taxon = "Zalophus wollebaeki"
-faces = "right"

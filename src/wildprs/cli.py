@@ -218,7 +218,7 @@ def main(argv=None):
         s.set_defaults(fn=fn)
     s = sub.add_parser("audit", help="set the state of each record, build the boards")
     s.set_defaults(fn=cmd_audit)
-    s = sub.add_parser("art", help="fetch the animal photos and silhouettes that art.toml names")
+    s = sub.add_parser("art", help="fetch the animal photos that art.toml names")
     s.add_argument("--force", action="store_true", help="fetch every file again")
     s.add_argument("--only", help="comma-separated taxa to fetch again")
     s.set_defaults(fn=cmd_art)

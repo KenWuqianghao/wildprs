@@ -98,6 +98,10 @@ class Taxon:
         return Group.OTHER
 
     @property
+    def lives_at_sea(self) -> bool:
+        return self.group is Group.MARINE or self.family in SEA_TURTLE_FAMILIES
+
+    @property
     def board_class(self) -> BoardClass | None:
         g = self.group
         if g is Group.BIRD:
@@ -118,6 +122,7 @@ class Taxon:
 
 
 MARINE_MAMMAL_FAMILIES = {"Phocidae", "Otariidae", "Odobenidae", "Trichechidae", "Dugongidae"}
+SEA_TURTLE_FAMILIES = {"Cheloniidae", "Dermochelyidae"}
 
 
 @dataclass(frozen=True)
@@ -172,14 +177,8 @@ class Effort:
     evidence: dict = field(default_factory=dict)
 
 
-class ArtKind(StrEnum):
-    PHOTO = "photo"
-    SILHOUETTE = "silhouette"
-
-
 @dataclass(frozen=True)
 class ArtFile:
-    """One image file under data/art. crop: "wide" (3:2), "square" (1:1) or "full" (a silhouette)."""
     path: str
     crop: str
     width: int
@@ -188,9 +187,7 @@ class ArtFile:
 
 @dataclass(frozen=True)
 class ArtEntry:
-    """One image of a taxon with its licence facts, as data/art/manifest.json holds it."""
     taxon: str
-    kind: ArtKind
     files: tuple[ArtFile, ...]
     licence: str
     licence_url: str
@@ -198,6 +195,26 @@ class ArtEntry:
     source_url: str
     shows: str
     change: str
+
+
+@dataclass(frozen=True)
+class ShareFormat:
+    key: str
+    label: str
+    file: str
+
+    @property
+    def poster(self) -> str:
+        return f"poster-{self.key}.html"
+
+
+SHARE_FORMATS = (
+    ShareFormat("track", "Track", "card.png"),
+    ShareFormat("collector", "Collector card", "card-collector.png"),
+    ShareFormat("ascii", "Scoreboard", "card-ascii.png"),
+)
+OG_FORMAT = SHARE_FORMATS[0]
+LANES = 8
 
 
 def haversine_km(lat1, lon1, lat2, lon2):

@@ -34,7 +34,7 @@ def wanted(site: Path) -> list[tuple[Path, Path]]:
 def _key(site: Path, page: Path) -> str:
     h = hashlib.sha1()
     for f in (page, page.parent / "track.json", page.parent / "race.json", page.parent / "record.json",
-              site / "static" / "motion.js", site / "static" / "style.css"):
+              *(site / "static" / f for f in ("motion.js", "style.css", "zoo.js", "zoo-species.js", "models.js"))):
         if f.exists():
             h.update(f.read_bytes())
     return h.hexdigest()[:12]

@@ -250,9 +250,7 @@ def track_file(rec_id: str, cat_key: str, unit: str, value: float, tr: Track, t0
 RACE_POINTS = 150
 
 
-def race_runner(tf: dict, view: MapView) -> dict:
-    """One runner of a board race: time since its own start, position in `view` units, and the
-    raced measure. Points before the start and after the finish are cut."""
+def race_runner(tf: dict, view: MapView | None) -> dict:
     t = np.asarray(tf["t"], float) - tf["t_zero"]
     ea, eb = tf["eff"]
     lo, hi = max(ea, 0), eb
@@ -263,11 +261,15 @@ def race_runner(tf: dict, view: MapView) -> dict:
     idx = np.arange(lo, hi + 1)
     if len(idx) > RACE_POINTS:
         idx = np.unique(np.r_[idx[np.linspace(0, len(idx) - 1, RACE_POINTS).astype(int)], lo, hi])
-    lon, lat = np.asarray(tf["lon"])[idx], np.asarray(tf["lat"])[idx]
-    x, y = view.xy(lon, lat)
-    if tf["category"] == "fastest-hour":  # raced as distance against time
-        measure = np.maximum(np.asarray(tf["km"])[idx] - tf["km"][ea], 0)
+    t = t[idx]
+    if tf["category"] == "fastest-hour":
+        km = np.maximum(np.asarray(tf["km"])[idx] - tf["km"][ea], 0)
+        measure = km * (tf["value"] / km[-1] if km[-1] > 0 else 0.0)
+        t, finish = t * (3600 / finish if finish > 0 else 1.0), 3600.0
     else:
         measure = np.asarray(tf["m"])[idx]
-    return {"t": np.round(t[idx]).astype(int).tolist(), "x": np.round(x, 1).tolist(), "y": np.round(y, 1).tolist(),
-            "d": np.round(measure, 1).tolist(), "finish": int(round(finish))}
+    out = {"t": np.round(t).astype(int).tolist(), "d": np.round(measure, 1).tolist(), "finish": int(round(finish))}
+    if view is not None:
+        x, y = view.xy(np.asarray(tf["lon"])[idx], np.asarray(tf["lat"])[idx])
+        out |= {"x": np.round(x, 1).tolist(), "y": np.round(y, 1).tolist()}
+    return out

@@ -1,0 +1,57 @@
+@font-face { font-family: "Bagel Fat One"; src: url(fonts/BagelFatOne.woff2) format("woff2"); }
+@font-face { font-family: "Gabarito"; src: url(fonts/Gabarito.woff2) format("woff2"); font-weight: 400 900; }
+
+* { box-sizing: border-box; }
+h1, p { margin: 0; }
+body { margin: 0; width: 1200px; height: 675px; overflow: hidden; -webkit-font-smoothing: antialiased; }
+
+.cposter {
+  --felt: #11463a; --stock: #fffdf6; --ink: #17130f; --gold: #f2c14e; --mint: #cfe6da;
+  --g-l: color-mix(in oklab, var(--g), white 58%); --g-d: color-mix(in oklab, var(--g), black 24%); --g-dd: color-mix(in oklab, var(--g), black 46%);
+  --noise: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .55 0'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23n)' opacity='.42'/%3E%3C/svg%3E");
+  position: relative; width: 1200px; height: 675px; overflow: hidden; color: var(--stock); font: 400 17px/1.45 Gabarito, sans-serif;
+  background: radial-gradient(760px 520px at 24% 46%, rgba(255, 244, 196, .22), transparent 72%), var(--noise), var(--felt);
+}
+.gold { --foil: linear-gradient(120deg, #b8801c 0%, #f7dc82 14%, #fff7cf 24%, #d7a336 38%, #9c6a12 50%, #f3d06a 62%, #fff3bd 74%, #c8922a 88%, #8d5f0f 100%); --foil-edge: #6e4a08; --medal: var(--gold); }
+.silver { --foil: linear-gradient(120deg, #7d8794 0%, #e3e8ee 14%, #ffffff 24%, #aab3bf 38%, #687280 50%, #d9dfe6 62%, #fbfcfd 74%, #98a2af 88%, #5d6673 100%); --foil-edge: #3f4752; --medal: #d9dfe6; }
+.plain { --foil: #efe7d2; --foil-edge: #8a8067; --medal: var(--stock); }
+
+.card { container: card / inline-size; position: absolute; left: 66px; top: 58px; width: 396px; aspect-ratio: 5 / 7; rotate: -6deg; }
+.face { position: absolute; inset: 0; padding: 3.2cqw; border-radius: 5cqw; isolation: isolate; background: var(--foil); background-size: 260% 260%; background-position: 30% 14%;
+  box-shadow: inset 0 0 0 .35cqw var(--foil-edge), inset 0 0 0 .9cqw rgba(255, 255, 255, .3), 0 3.4cqw 5.4cqw -1.6cqw rgba(0, 0, 0, .55), 0 .8cqw 1.4cqw rgba(0, 0, 0, .3); }
+.cbody { height: 100%; display: flex; flex-direction: column; gap: 1.7cqw; padding: 2.2cqw; border: .55cqw solid var(--ink); border-radius: 2.6cqw; background: var(--g-d); color: var(--ink); }
+.banner { display: flex; align-items: center; gap: 1.6cqw; min-height: 13.2cqw; padding: 1cqw 1.4cqw 1cqw 2.4cqw; background: var(--stock); border: .55cqw solid var(--ink); border-radius: 1.8cqw; }
+.name { flex: 1; min-width: 0; font: 400 calc(6.5cqw * var(--s, 1))/1.04 "Bagel Fat One"; text-wrap: balance; overflow-wrap: anywhere; }
+.gicon { flex: none; display: grid; place-items: center; width: 9.6cqw; height: 9.6cqw; border-radius: 50%; background: var(--g); border: .55cqw solid var(--ink); color: var(--stock); }
+.gicon svg { width: 68%; height: 68%; }
+.artwrap { position: relative; flex: 1 1 0; min-height: 30cqw; }
+.art { position: absolute; inset: 0; border: .55cqw solid var(--ink); border-radius: 1.6cqw; overflow: hidden; background: var(--g); }
+.art svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.s-l { fill: var(--g-l); } .s-d { fill: var(--g-d); } .s-dd { fill: var(--g-dd); } .s-ray { fill: var(--g-l); opacity: .42; }
+.model { position: absolute; left: -6cqw; top: -10cqw; width: calc(100% + 34cqw); height: calc(100% + 10cqw); z-index: 2; }
+.ribbon { position: relative; z-index: 3; align-self: center; max-width: 94%; margin: -5.4cqw 0 -.2cqw; padding: 1.35cqw 5cqw 1.2cqw; background: var(--ink); color: var(--stock); font: 800 3.5cqw/1.15 Gabarito; letter-spacing: .06em; text-transform: uppercase; text-align: center; text-wrap: balance;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 2.2cqw) 50%, 100% 100%, 0 100%, 2.2cqw 50%); }
+.plate { padding: 1.4cqw 2.2cqw 1.2cqw; background: var(--stock); border: .55cqw solid var(--ink); border-radius: 1.8cqw; }
+.num { display: flex; align-items: baseline; justify-content: center; gap: 1.4cqw; white-space: nowrap; font: 400 calc(21cqw * var(--s, 1))/1 "Bagel Fat One"; font-variant-numeric: tabular-nums; }
+.unit { font: 900 calc(7cqw * var(--s, 1))/1 Gabarito; }
+.fine { display: flex; justify-content: space-between; gap: 2cqw; padding: 0 .6cqw; font: 600 2.7cqw/1.2 Gabarito; color: var(--stock); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.fine span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.fine .tag { font-weight: 800; }
+.sheen { position: absolute; inset: 0; z-index: 1; border-radius: inherit; mix-blend-mode: soft-light; opacity: .6; background: radial-gradient(62% 46% at 30% 14%, rgba(255, 255, 255, .95), rgba(255, 255, 255, 0) 70%); }
+.gold .sheen { background: radial-gradient(62% 46% at 30% 14%, rgba(255, 255, 255, .9), rgba(255, 255, 255, 0) 70%), linear-gradient(115deg, transparent 24%, rgba(255, 90, 170, .6) 35%, rgba(90, 210, 255, .6) 44%, rgba(255, 235, 120, .65) 53%, rgba(120, 255, 190, .55) 61%, transparent 72%);
+  background-size: 100% 100%, 300% 300%; background-position: 0 0, 30% 14%; }
+
+.brand { position: absolute; left: 566px; top: 44px; display: inline-flex; align-items: center; gap: 12px; white-space: nowrap; font: 400 40px/1 "Bagel Fat One"; }
+.brand svg { width: 42px; height: 42px; }
+.seal { position: absolute; right: 40px; top: 26px; width: 136px; height: 136px; rotate: 10deg; filter: drop-shadow(0 8px 8px rgba(0, 0, 0, .35)); }
+.seal polygon { fill: var(--medal); }
+.of { position: absolute; right: 190px; top: 50px; text-align: right; font: 800 30px/1.1 Gabarito; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.of span { display: block; margin-top: 3px; font-size: 23px; color: var(--mint); }
+.txt { position: absolute; left: 566px; right: 40px; top: 166px; bottom: 84px; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; }
+.big { align-self: stretch; display: flex; align-items: baseline; gap: 14px; font: 400 calc(164px * var(--s, 1))/.9 "Bagel Fat One"; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.big small { font: 400 calc(76px * var(--s, 1))/.9 "Bagel Fat One"; color: var(--gold); }
+.rib { margin: 20px 0 0 -4px; padding: 11px 34px 10px 30px; background: var(--stock); color: var(--ink); font: 900 31px/1.1 Gabarito; white-space: nowrap; clip-path: polygon(0 0, 100% 0, calc(100% - 16px) 50%, 100% 100%, 0 100%, 16px 50%); }
+.who { align-self: stretch; margin-top: 24px; font: 400 calc(40px * var(--s, 1))/1.05 "Bagel Fat One"; color: var(--gold); text-wrap: balance; }
+.common { margin-top: 2px; font: 700 26px/1.1 Gabarito; }
+.hook { margin-top: 8px; max-width: 540px; font: 600 calc(30px * var(--s, 1))/1.2 Gabarito; text-wrap: pretty; }
+.src { position: absolute; left: 566px; bottom: 40px; font: 600 20px/1.2 Gabarito; color: var(--mint); white-space: nowrap; }
