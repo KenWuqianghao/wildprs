@@ -24,7 +24,7 @@ body.page-record { --shade: 8, 24, 12; background: var(--grass) repeating-linear
 ::selection { background: var(--ink); color: var(--paper); }
 .paper ::selection { background: var(--track); color: var(--paper); }
 :focus-visible { outline: 3px solid var(--paint); outline-offset: 3px; }
-.paper :focus-visible { outline-color: var(--ink); }
+:is(.paper, .rctl) :focus-visible { outline-color: var(--ink); }
 h1, h2, h3, p, dl, dd, figure, ol, ul { margin: 0; }
 ol, ul { padding: 0; list-style: none; }
 a { color: inherit; text-underline-offset: .18em; text-decoration-thickness: .08em; }
