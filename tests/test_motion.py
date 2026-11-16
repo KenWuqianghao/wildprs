@@ -43,3 +43,15 @@ def test_race_runners_start_at_their_first_gate_and_finish_at_their_record_time(
         assert rn["finish"] == pytest.approx(hours * 3600, abs=5)
         assert rn["t"][0] <= 0 < rn["t"][1]          # the race clock starts at the first gate
         assert rn["t"][-1] >= rn["finish"]
+
+
+def test_fastest_hour_runner_ends_after_one_hour_at_the_distance_of_its_record_speed():
+    t = 1.6e9 + np.arange(0, 4 * 3600, 1500.0)
+    tr = track(t, 40 + (t - t[0]) / 3600 * 60 / 111.2, np.full(len(t), 20.0), taxon=STORK)
+    (e,) = BY_KEY["fastest-hour"].fn(tr)
+    assert tr.t[e.i1] - tr.t[e.i0] == 4500
+    tf = replay.track_file("x", e.category, "km/h", e.value, tr, tr.t[e.i0], tr.t[e.i1], _view(tr), False, False)
+    rn = replay.race_runner(tf, None)
+    assert rn["finish"] == 3600 and rn["t"][-1] == 3600
+    assert rn["d"][-1] == pytest.approx(e.value, abs=0.1)
+    assert "x" not in rn

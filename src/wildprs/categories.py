@@ -224,7 +224,7 @@ CATEGORIES: tuple[Category, ...] = (
              "deg", -1, GPS_ARGOS, extreme_latitude(-1, "farthest-south"), "Reached {value} {unit}, {end_where}.",
              "latitude"),
     Category("countries", "Most countries", "Countries with 3 or more fixes inside their borders.",
-             "count", +1, GPS_ARGOS, countries, "Visited {value} countries in {duration}.", "cumulative",
+             "count", +1, GPS_ARGOS, countries, "Visited {value} {unit} in {duration}.", "cumulative",
              artefact_beyond=40),
     Category("biggest-day", "Biggest day", "Longest distance along the track in any 24 hours, with no gap over 6 hours.",
              "km", +1, GPS_ARGOS, distance_in(86400, 6, 6 * 3600, "biggest-day"),

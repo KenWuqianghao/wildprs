@@ -31,11 +31,10 @@ class MapView:
 
 
 Box = tuple[float, float, float, float]
-RIGHT: Box = (0.42, 0.11, 0.94, 0.89)  # the left 40 % stays free for the poster text
 FULL: Box = (0.08, 0.10, 0.92, 0.90)
 
 
-def frame(lon: np.ndarray, lat: np.ndarray, w: float, h: float, box: Box = RIGHT, min_span_deg: float = 3.0) -> MapView:
+def frame(lon: np.ndarray, lat: np.ndarray, w: float, h: float, box: Box = FULL, min_span_deg: float = 3.0) -> MapView:
     """Fit the track into box, given as (left, top, right, bottom) fractions of the frame."""
     lat_c = float(np.clip((lat.min() + lat.max()) / 2, -70, 70))
     kx = math.cos(math.radians(lat_c))
@@ -98,7 +97,7 @@ def graticule_svg(v: MapView) -> str:
     lon_min, lon_max = v.lon0, v.lon0 + v.w / (v.kx * v.scale)
     lat_min, lat_max = v.lat1 - v.h / v.scale, v.lat1
     span = max(lon_max - lon_min, lat_max - lat_min)
-    step = next(s for s in (1, 2, 5, 10, 20, 30, 60) if span / s <= 14)
+    step = next(s for s in (0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 30, 60) if span / s <= 14)
     d = []
     for lo in np.arange(math.ceil(lon_min / step) * step, lon_max, step):
         x, _ = v.xy(lo, 0)

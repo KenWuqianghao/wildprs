@@ -1,4 +1,3 @@
-"""check: walk the built site and prove that pages, board data, cards and meta tags agree."""
 from __future__ import annotations
 
 import json
@@ -7,6 +6,9 @@ import struct
 from html import unescape
 from pathlib import Path
 from urllib.parse import urlparse
+
+from .model import LANES, OG_FORMAT, SHARE_FORMATS
+from .zoo import model_taxa
 
 
 def _png_size(p: Path) -> tuple[int, int]:
@@ -54,15 +56,16 @@ def track_errors(tf: dict, sensitive: bool) -> list[str]:
     return errs
 
 
-ART_REF = re.compile(r'(?:src|href|data-sil)="([^"]*art/[^"]+)"|srcset="([^"]+)"|url\(([^)]*art/[^)]+)\)')
+def share_errors(record_dir: Path) -> list[str]:
+    return [f"{record_dir.name}: {f.file} missing or not 1200x675" for f in SHARE_FORMATS
+            if not (record_dir / f.file).exists() or _png_size(record_dir / f.file) != (1200, 675)]
 
 
-def art_errors(site: Path, board_taxa: set[str]) -> list[str]:
-    """Every image a page shows exists and has an entry on /credits/; every board taxon has a silhouette."""
+ART_REF = re.compile(r'(?:src|href)="([^"]*art/[^"]+)"|srcset="([^"]+)"|url\(([^)]*art/[^)]+)\)')
+
+
+def art_errors(site: Path) -> list[str]:
     errs = []
-    manifest = json.loads((site / "art" / "manifest.json").read_text()) if (site / "art" / "manifest.json").exists() else []
-    sil = {e["taxon"] for e in manifest if e["kind"] == "silhouette" and all((site / "art" / f["path"]).exists() for f in e["files"])}
-    errs += [f"{t}: board taxon has no silhouette" for t in sorted(board_taxa - sil)]
     credits = site / "credits" / "index.html"
     credited = {p for files in re.findall(r'data-files="([^"]*)"', credits.read_text()) for p in files.split()} if credits.exists() else set()
     for page in site.rglob("*.html"):
@@ -77,10 +80,6 @@ def art_errors(site: Path, board_taxa: set[str]) -> list[str]:
                 errs.append(f"{page.relative_to(site)}: missing art file {ref}")
             elif rel not in credited:
                 errs.append(f"{page.relative_to(site)}: {ref} has no entry on /credits/")
-    for rj in site.glob("b/**/race.json"):
-        for rn in json.loads(rj.read_text())["runners"]:
-            if not (site / rn["sil"]).exists():
-                errs.append(f"{rj.relative_to(site)}: missing silhouette {rn['sil']}")
     return errs
 
 
@@ -96,8 +95,12 @@ def check(site: Path) -> list[str]:
             rj = page.parent / "race.json"
             if 'data-race="race.json"' in html:
                 race = json.loads(rj.read_text()) if rj.exists() else {"runners": []}
-                if [r["id"] for r in race["runners"]] != [e["id"] for e in entries]:
+                field = entries[:LANES] if race.get("kind") == "lanes" else entries
+                if [r["id"] for r in race["runners"]] != [e["id"] for e in field]:
                     errors.append(f"{page}: race.json runners differ from the board")
+            mp4 = page.parent / "race.mp4"
+            if mp4.exists() and mp4.stat().st_size > VIDEO_MAX_BYTES:
+                errors.append(f"{page}: race.mp4 over {VIDEO_MAX_BYTES} bytes")
             for e in entries:
                 rec = json.loads((site / "r" / e["id"] / "record.json").read_text())
                 if rec["value"] != e["value"] or rec["category"] != cat:
@@ -118,11 +121,9 @@ def check(site: Path) -> list[str]:
             errors.append(f"{rid}: record page with no board entry")
         if rec["display"]["value"] not in unescape(html):
             errors.append(f"{rid}: page does not show {rec['display']['value']}")
-        png = d / "card.png"
-        if not png.exists() or _png_size(png) != (1200, 675):
-            errors.append(f"{rid}: card.png missing or not 1200x675")
+        errors += share_errors(d)
         og, tw = _meta(html, "property", "og:image"), _meta(html, "name", "twitter:image")
-        if not og or og != tw or not og.endswith(f"/r/{rid}/card.png"):
+        if not og or og != tw or not og.endswith(f"/r/{rid}/{OG_FORMAT.file}"):
             errors.append(f"{rid}: og:image / twitter:image wrong: {og} {tw}")
         if _meta(html, "name", "twitter:card") != "summary_large_image":
             errors.append(f"{rid}: twitter:card missing")
@@ -139,7 +140,8 @@ def check(site: Path) -> list[str]:
         mp4 = d / "replay.mp4"
         if mp4.exists() and mp4.stat().st_size > VIDEO_MAX_BYTES:
             errors.append(f"{rid}: replay.mp4 over {VIDEO_MAX_BYTES} bytes")
-    errors += art_errors(site, taxa)
+    errors += [f"{t}: board taxon has no 3D model" for t in sorted(taxa - model_taxa(site / "static"))]
+    errors += art_errors(site)
     for page in site.rglob("*.html"):
         for href in re.findall(r'(?:href|src)="([^"#]+)"', page.read_text()):
             if urlparse(href).scheme:

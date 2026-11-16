@@ -1,15 +1,20 @@
-/* Wild PRs motion: record replay, board race, home card routes, and the frame clock for videos.
-   No dependencies. Without JS the pages show the static poster and the final numbers. */
 (() => {
   'use strict';
   const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const VIDEO = new URLSearchParams(location.search).has('video');
   const DISTANCE = new Set(['lifetime', 'biggest-day', 'biggest-week', 'sea-crossing']);
   const SEGMENTS = new Set(['strait-of-gibraltar', 'bosphorus-to-sinai', 'mediterranean', 'alps', 'tropics-of-africa', 'sahara']);
-  const C = { trk0: '#3fd0c9', trk1: '#ffc94a', night: '#0a111c', ink: '#f4f1ea', ink2: '#9aa6b8', line: '#2a3850' };
-  const RANK = ['#ffc94a', '#e8edf4', '#f0a06a'];
-  const REPLAY_MS = 10000, RACE_MS = 11000, CARD_MS = 1700;
-  const FS = VIDEO ? 1.75 : 1;   // type and marks read in a small feed preview
+  const POINT_LIKE = new Set(['farthest-north', 'farthest-south', 'highest-flight']);
+  const css = getComputedStyle(document.documentElement);
+  const C = Object.fromEntries(['track', 'paint', 'paper', 'ink', 'mute'].map(k => [k, css.getPropertyValue(`--${k}`).trim()]));
+  const DISPLAY = css.getPropertyValue('--display').trim(), TEXT = css.getPropertyValue('--text').trim();
+  const REPLAY_MS = 10000, RACE_MS = 11000;
+  const FS = VIDEO ? 1.5 : 1;
+  const TOP = 1.0;
+  const TAU = Math.PI * 2;
+  const STILL = 0.25;
+  const CROP = VIDEO ? 56 : 0;
+  const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
 
   /* ---------- formatting: mirrors site.py ---------- */
   const group = (v, d = 0) => v.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
@@ -29,7 +34,6 @@
     if (unit === 'count' || unit === 'km/h') return String(Math.round(v));
     return group(v);
   }
-  const ease = p => p < .5 ? 2 * p * p : 1 - (-2 * p + 2) ** 2 / 2;
 
   /* ---------- track sampling ---------- */
   function locate(t, tau) {           // index i and fraction f with t[i] <= tau <= t[i+1]
@@ -40,6 +44,21 @@
     return [lo, (tau - t[lo]) / Math.max(t[lo + 1] - t[lo], 1e-9)];
   }
   const lerp = (a, i, f) => f && i + 1 < a.length && a[i + 1] != null && a[i] != null ? a[i] + (a[i + 1] - a[i]) * f : a[i];
+
+  function headings(pos, n = 240) {
+    const P = Array.from({ length: n + 1 }, (_, k) => pos(k / n));
+    const raw = P.map((_, k) => {
+      for (const w of [3, 8, 24, 72]) {
+        const a = P[Math.max(0, k - w)], b = P[Math.min(n, k + w)];
+        if (Math.hypot(b[0] - a[0], b[1] - a[1]) > 1.5) return Math.atan2((a[1] - b[1]) / Math.sin(TOP), b[0] - a[0]);
+      }
+      return null;
+    });
+    let last = raw.find(a => a != null) ?? 0;
+    const yaw = raw.map(a => (last = a == null ? last : a + Math.round((last - a) / TAU) * TAU));
+    const soft = yaw.map((_, k) => { const s = yaw.slice(Math.max(0, k - 2), k + 3); return s.reduce((x, y) => x + y) / s.length; });
+    return u => { const x = clamp(u) * n, k = Math.min(n - 1, Math.floor(x)); return soft[k] + (soft[k + 1] - soft[k]) * (x - k); };
+  }
 
   /* ---------- clock: idle -> playing <-> paused -> ended; restart -> playing ---------- */
   class Clock {
@@ -63,7 +82,7 @@
     pause() { if (this.state !== 'playing') return; cancelAnimationFrame(this.raf); this.raf = 0; this.set('paused'); }
     toggle() { this.state === 'playing' ? this.pause() : this.play(); }
     restart() { this.p = 0; this.draw(0); this.state = 'paused'; this.play(); }
-    seek(p) { this.pause(); this.p = Math.max(0, Math.min(1, p)); if (this.state === 'idle' || this.state === 'ended') this.set('paused'); this.draw(this.p); }
+    seek(p) { this.pause(); this.p = clamp(p); if (this.state === 'idle' || this.state === 'ended') this.set('paused'); this.draw(this.p); }
   }
 
   function wireControls(root, clock) {
@@ -90,144 +109,163 @@
     io.observe(el);
   }
 
-  function fitCanvas(cv, w, h) {
-    const dpr = Math.min(window.devicePixelRatio || 1, VIDEO ? 1 : 2);
-    if (cv.width !== Math.round(w * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
+  function scene(root, stage, after, ms, draw) {
+    const cv = document.createElement('canvas'); cv.className = 'route';
+    after.after(cv);
+    const paint = p => draw(fitCanvas(cv, stage.clientWidth, stage.clientHeight), stage.clientWidth, stage.clientHeight, p);
+    root.classList.add('live');
+    const clock = new Clock(ms, paint);
+    paint(1);
+    if (!VIDEO) new ResizeObserver(() => paint(clock.p)).observe(stage);
+    wireControls(root, clock);
+    return { clock, draw: paint };
+  }
+
+  function fitCanvas(cv, w, h, zoom = 1) {
+    const dpr = (VIDEO ? 1 : Math.min(window.devicePixelRatio || 1, 2)) * zoom;
+    if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
     const g = cv.getContext('2d');
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    g.clearRect(0, 0, w, h);
+    g.lineJoin = g.lineCap = 'round'; g.textBaseline = 'middle';
     return g;
   }
-
-  /* ---------- route drawing shared by replay and home cards ---------- */
-  function projector(view, k) {      // map units of the 1200x675 poster -> CSS px
-    const [lon0, lat1, kx, sc] = view;
-    return (lon, lat) => [(lon - lon0) * kx * sc * k, (lat1 - lat) * sc * k];
-  }
-  function drawRoute(g, P, upto, k, opt = {}) {   // P: [[x,y]...] up to and including the head point
-    if (P.length < 2) return;
-    const a = P[0], b = upto;
-    const grad = g.createLinearGradient(a[0], a[1], opt.end ? opt.end[0] : b[0], opt.end ? opt.end[1] : b[1]);
-    grad.addColorStop(0, C.trk0); grad.addColorStop(1, C.trk1);
-    g.lineJoin = g.lineCap = 'round';
-    g.beginPath(); g.moveTo(a[0], a[1]);
-    for (let i = 1; i < P.length; i++) g.lineTo(P[i][0], P[i][1]);
-    g.strokeStyle = grad;
-    g.globalAlpha = .10; g.lineWidth = 26 * k; g.stroke();
-    g.globalAlpha = .16; g.lineWidth = 13 * k; g.stroke();
-    g.globalAlpha = 1; g.lineWidth = 5 * k; g.stroke();
-  }
-  /* ---------- silhouettes: SVG files that face right; drawn tinted, mirrored to face the way of travel ---------- */
-  const SIL = new Map(), TINT = new Map();
-  function silhouette(url) {
-    if (!SIL.has(url)) SIL.set(url, new Promise((ok, no) => {
-      const im = new Image();
-      im.onload = () => ok(im); im.onerror = () => no(new Error(`silhouette ${url}`));
-      im.src = url;
-    }));
-    return SIL.get(url);
-  }
-  function silBox(im, size) {      // a wide animal (whale, bat) gets more width and less height than a tall one
-    const r = im.naturalWidth / im.naturalHeight;
-    let w = size * Math.sqrt(r), h = size / Math.sqrt(r);
-    if (w > 1.9 * size) { h *= 1.9 * size / w; w = 1.9 * size; }
-    if (h > 1.3 * size) { w *= 1.3 * size / h; h = 1.3 * size; }
-    return [w, h];
-  }
-  function tinted(im, colour, w, h) {
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    const key = `${im.src}|${colour}|${Math.round(w * dpr)}`;
-    let c = TINT.get(key);
-    if (!c) {
-      c = document.createElement('canvas');
-      c.width = Math.max(1, Math.round(w * dpr)); c.height = Math.max(1, Math.round(h * dpr));
-      const x = c.getContext('2d');
-      x.drawImage(im, 0, 0, c.width, c.height);
-      x.globalCompositeOperation = 'source-in'; x.fillStyle = colour; x.fillRect(0, 0, c.width, c.height);
-      TINT.set(key, c);
-    }
-    return c;
-  }
-  function drawSil(g, im, x, y, size, colour, left, edge = C.night) {   // centred on (x, y), with an outline
-    const [w, h] = silBox(im, size);
-    const o = Math.max(1.2, size * .05);
-    g.save(); g.translate(x, y); if (left) g.scale(-1, 1);
-    const back = tinted(im, edge, w, h), fore = tinted(im, colour, w, h);
-    for (const [dx, dy] of [[-o, 0], [o, 0], [0, -o], [0, o], [-o * .7, -o * .7], [o * .7, o * .7], [-o * .7, o * .7], [o * .7, -o * .7]])
-      g.drawImage(back, -w / 2 + dx, -h / 2 + dy, w, h);
-    g.drawImage(fore, -w / 2, -h / 2, w, h);
-    g.restore();
-    return [w, h];
-  }
-  function facing() {              // left or right from the sign of dx; small moves keep the last direction
-    let left = false;
-    return (dx, eps) => { if (Math.abs(dx) > eps) left = dx < 0; return left; };
-  }
+  const fonts = () => Promise.all([document.fonts.load(`900 16px ${DISPLAY}`), document.fonts.load(`700 16px ${TEXT}`)]);
 
   function dot(g, x, y, r, fill, stroke, sw) {
-    g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2);
+    g.beginPath(); g.arc(x, y, r, 0, TAU);
     if (fill) { g.fillStyle = fill; g.fill(); }
     if (stroke) { g.strokeStyle = stroke; g.lineWidth = sw; g.stroke(); }
   }
+  function checker(g, x, y, cols, rows, q) {
+    for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) { g.fillStyle = (r + c) % 2 ? C.paint : C.ink; g.fillRect(x + c * q, y + r * q, q, q); }
+  }
+  function fitText(g, text, max, fs, font) {
+    g.font = font(fs);
+    const w = g.measureText(text).width;
+    if (w <= max) return text;
+    g.font = font(fs * Math.max(.8, max / w));
+    let s = text;
+    while (g.measureText(s).width > max + .5 && s.length > 2) s = `${s.slice(0, -2).trimEnd()}…`;
+    return s;
+  }
+  function chip(g, x, y, fs, { id, band, rank, mark }, measure) {
+    const h = Math.round(fs * 1.5), pad = fs * .42, ty = y + fs * .07;
+    g.font = `800 ${fs}px ${DISPLAY}`;
+    const wRank = rank ? Math.max(h * .8, g.measureText(String(rank)).width + pad * 1.4) : 0, wId = g.measureText(id).width;
+    const w = wRank + pad + wId + (mark ? pad + g.measureText(mark).width : 0) + pad;
+    if (measure) return w;
+    g.fillStyle = 'rgba(20,18,16,.22)'; g.fillRect(x + 1, y - h / 2 + 2, w, h);
+    g.fillStyle = C.paper; g.fillRect(x, y - h / 2, w, h);
+    g.fillStyle = band; g.fillRect(x, y - h / 2, rank ? wRank : w, rank ? h : Math.max(2, h * .2));
+    g.strokeStyle = C.ink; g.lineWidth = 1; g.strokeRect(x + .5, y - h / 2 + .5, w - 1, h - 1);
+    g.textAlign = 'center';
+    if (rank) { g.fillStyle = C.paper; g.fillText(String(rank), x + wRank / 2, ty); }
+    g.textAlign = 'left'; g.fillStyle = C.ink; g.fillText(id, x + wRank + pad, rank ? ty : ty + h * .08);
+    if (mark) { g.fillStyle = C.track; g.fillText(mark, x + wRank + pad + wId + pad, rank ? ty : ty + h * .08); }
+    return w;
+  }
+  const bold = px => `700 ${px}px ${TEXT}`;
+  const shortId = id => id.length > 14 ? `${id.slice(0, 13)}…` : id;
+
+  const hz = taxon => Zoo.species[taxon].hz || 1;
+  function topModel(g, taxon, x, y, size, yaw, phase) {
+    Zoo.draw(g, Zoo.build(taxon, phase), { fit: Zoo.bounds(taxon), x, y, size, yaw, pitch: TOP, shadow: Models.shadow(taxon, 'rgba(20,18,16,.2)', .35) });
+  }
+  function sideModel(g, taxon, noseX, floorY, midY, box, phase) {
+    const fly = Models.flies(taxon), yaw = -.3, pitch = fly ? .34 : .16;
+    const v = Zoo.view(taxon, yaw, pitch), s = Math.min(box[0] / (v.x1 - v.x0), box[1] / (v.y1 - v.y0));
+    const w = (v.x1 - v.x0) * s, h = (v.y1 - v.y0) * s, y = fly ? midY : floorY - h / 2;
+    const feet = Zoo.bounds(taxon).c[1] - (floorY - (y + (v.y0 + v.y1) / 2 * s)) / (Math.cos(pitch) * s);
+    Zoo.draw(g, Zoo.build(taxon, phase), { name: taxon, box, x: noseX - w / 2, y, yaw, pitch, shadow: { col: 'rgba(46,10,0,.3)', y: fly ? feet : undefined } });
+    return w;
+  }
 
   /* ---------- record replay ---------- */
+  function markStep(total) {
+    for (let e = .001; e < 1e7; e *= 10) for (const m of [1, 2, 2.5, 5]) if (total / (m * e) <= 8) return m * e;
+    return total;
+  }
   async function initReplay(root) {
-    const [tr, sil] = await Promise.all([fetch(root.dataset.track).then(r => r.json()), silhouette(root.dataset.sil)]);
-    const face = facing();
-    const poster = root.querySelector('.poster');
-    const num = poster.querySelector('.num');
-    const numText = num.firstChild;
-    const finalUnit = num.querySelector('.u')?.textContent;
+    const [tr] = await Promise.all([fetch(root.dataset.track).then(r => r.json()), fonts()]);
+    const taxon = root.dataset.taxon;
+    const stage = root.querySelector('.stage');
+    const num = root.querySelector('.num'), numText = num.firstChild, unitEl = num.querySelector('.u');
+    const finalUnit = unitEl.textContent;
     const cells = {}; root.querySelectorAll('.ro [data-k]').forEach(c => { cells[c.dataset.k] = c; });
     const finals = {}; for (const k in cells) finals[k] = cells[k].textContent;
     const sun = root.querySelector('.rsun'); if (sun) sun.hidden = false;
-    const scrub = document.querySelector('.scrub'), cur = scrub?.querySelector('.cur');
-    const cv = document.createElement('canvas'); cv.className = 'route';
-    poster.querySelector('.map').after(cv);
+    const scrub = root.querySelector('.scrub'), cur = scrub?.querySelector('.cur');
     const T = tr.t, n = T.length, span = T[n - 1] - T[0];
-    const [ea, eb] = tr.eff;
-    const dist = DISTANCE.has(tr.category);
-    const seg = SEGMENTS.has(tr.category);
-    const trail = span * .06;
-    let W = 0, k = 1, P = [], proj;
-    const layout = () => {
-      W = poster.clientWidth; k = W / 1200; proj = projector(tr.view, k);
-      P = T.map((_, i) => proj(tr.lon[i], tr.lat[i]));
-    };
-    const draw = p => {
-      if (poster.clientWidth !== W) layout();
-      const g = fitCanvas(cv, W, W * 675 / 1200);
-      g.clearRect(0, 0, W, W);
-      const tau = T[0] + span * p;
-      const [i, f] = locate(T, tau);
-      const head = proj(lerp(tr.lon, i, f), lerp(tr.lat, i, f));
-      const end = P[n - 1];
-      drawRoute(g, [...P.slice(0, i + 1), head], head, k, { end });
-      // bright fading trail just behind the head
-      const [j] = locate(T, tau - trail);
-      g.lineCap = 'round';
-      for (let q = Math.max(j, 0); q <= i; q++) {
-        const b = q === i ? head : P[q + 1], a = P[q];
-        g.globalAlpha = .9 * Math.max(0, 1 - (tau - T[q]) / trail);
-        g.strokeStyle = '#fffbe9'; g.lineWidth = 3 * k;
-        g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(b[0], b[1]); g.stroke();
+    const dist = DISTANCE.has(tr.category), seg = SEGMENTS.has(tr.category);
+    const [lon0, lat1, kx, sc] = tr.view;
+    const U = T.map((_, i) => [(tr.lon[i] - lon0) * kx * sc, (lat1 - tr.lat[i]) * sc]);
+    const at = tau => { const [i, f] = locate(T, tau); return f ? [U[i][0] + (U[i + 1][0] - U[i][0]) * f, U[i][1] + (U[i + 1][1] - U[i][1]) * f] : U[i]; };
+    const yawAt = headings(u => at(T[0] + span * u));
+    const moved = [0];
+    for (let i = 0; i < n - 1; i++) moved.push(moved[i] + (U[i + 1][0] !== U[i][0] || U[i + 1][1] !== U[i][1] ? T[i + 1] - T[i] : 0));
+    const along = dist ? tr.m : tr.km.map(v => v - tr.km[0]);
+    const marks = [];
+    if (!POINT_LIKE.has(tr.category) && along[n - 1] > 0) {
+      const step = markStep(along[n - 1]);
+      for (let km = step, i = 0; km <= along[n - 1] - step * .3; km += step) {
+        while (along[i + 1] < km) i++;
+        const f = (km - along[i]) / (along[i + 1] - along[i]), a = U[i], b = U[i + 1], l = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+        marks.push({ km, x: a[0] + (b[0] - a[0]) * f, y: a[1] + (b[1] - a[1]) * f, nx: (a[1] - b[1]) / l, ny: (b[0] - a[0]) / l,
+          label: group(km, step % 1 ? (step * 10 % 1 ? 2 : 1) : 0) + (marks.length ? '' : ' km') });
       }
-      g.globalAlpha = 1;
-      dot(g, P[0][0], P[0][1], 9 * k, C.night, C.trk0, 5 * k);
-      if (tr.coarse) dot(g, head[0], head[1], 22 * k, 'rgba(255,255,255,.14)', 'rgba(255,255,255,.6)', 2 * k);
-      const size = Math.max(26, 64 * k * FS);
-      if (p < 1) dot(g, head[0], head[1], size * (.62 + .3 * ((tau / span * 6) % 1)), null, 'rgba(255,201,74,.4)', 2 * k);
-      const [bi, bf] = locate(T, tau - span * .015);
-      const back = proj(lerp(tr.lon, bi, bf), lerp(tr.lat, bi, bf));
-      drawSil(g, sil, head[0], head[1], size, C.trk1, face(head[0] - back[0], .5));
-      // numbers
+      const out = marks.reduce((v, m) => v + m.nx * (m.x - 600) + m.ny * (m.y - 337), 0) < 0 ? -1 : 1;
+      for (const m of marks) { m.nx *= out; m.ny *= out; }
+    }
+    const setCell = (key, text) => { const b = cells[key]; if (b && b.textContent !== text) b.textContent = text; };
+
+    const ctl = scene(root, stage, stage.querySelector('.map'), REPLAY_MS, (g, W, H, p) => {
+      const k = W / 1200, S = clamp(W / 760, .8, 1.25) * FS;
+      const tau = T[0] + span * p, [i, f] = locate(T, tau);
+      const head = at(tau).map(v => v * k), done = along[i] + ((along[i + 1] ?? along[i]) - along[i]) * f;
+      const line = to => { g.beginPath(); g.moveTo(U[0][0] * k, U[0][1] * k); for (let q = 1; q <= to; q++) g.lineTo(U[q][0] * k, U[q][1] * k); };
+      line(n - 1); g.strokeStyle = C.track; g.globalAlpha = .4; g.lineWidth = 3.5 * S; g.setLineDash([.1, 8 * S]); g.stroke();
+      g.setLineDash([]); g.globalAlpha = 1;
+      line(i); g.lineTo(head[0], head[1]); g.lineWidth = 4.5 * S; g.stroke();
+
+      g.font = `800 ${15 * S}px ${DISPLAY}`; g.textAlign = 'center';
+      const taken = [];
+      for (const m of marks) {
+        const x = m.x * k, y = m.y * k, reached = m.km <= done;
+        dot(g, x, y, 5 * S, reached ? C.track : C.paper, C.track, 2 * S);
+        const w = g.measureText(m.label).width, h = 15 * S, off = 10 * S + Math.abs(m.nx) * w / 2 + Math.abs(m.ny) * h / 2;
+        const lx = clamp(x + m.nx * off, w / 2 + 4, W - w / 2 - 4), ly = clamp(y + m.ny * off, h, H - h);
+        if (taken.some(b => Math.abs(b[0] - lx) < (b[2] + w) / 2 + 4 && Math.abs(b[1] - ly) < h)) continue;
+        taken.push([lx, ly, w]);
+        g.strokeStyle = C.paper; g.lineWidth = 4 * S; g.strokeText(m.label, lx, ly);
+        g.fillStyle = C.ink; g.fillText(m.label, lx, ly);
+      }
+      const a = [U[0][0] * k, U[0][1] * k], z = [U[n - 1][0] * k, U[n - 1][1] * k], q = 5 * S;
+      if (tr.coarse) {
+        g.setLineDash([4 * S, 5 * S]);
+        for (const e of [a, z, head]) dot(g, e[0], e[1], Math.max(12, 22 * k) * FS, 'rgba(20,18,16,.06)', 'rgba(20,18,16,.7)', 1.5 * S);
+        g.setLineDash([]);
+      }
+      dot(g, a[0], a[1], 8 * S, C.paper, C.ink, 3 * S); dot(g, a[0], a[1], 2.6 * S, C.ink);
+      const flag = Math.max(2, z[1] - 26 * S);
+      g.fillStyle = C.ink; g.fillRect(z[0] - 1.5 * S, flag, 3 * S, z[1] - flag);
+      checker(g, z[0] + 1.5 * S, flag, 4, 3, q);
+      g.strokeStyle = C.ink; g.lineWidth = 1; g.strokeRect(z[0] + 1.5 * S, flag, 4 * q, 3 * q);
+
+      const phase = REDUCED ? STILL : hz(taxon) * lerp(moved, i, f) / span * REPLAY_MS / 1000;
+      topModel(g, taxon, head[0], head[1], clamp(W * .058, 30, 56) * (VIDEO ? 1.3 : 1), yawAt(p), phase);
+
       if (p >= 1) {
         numText.nodeValue = root.dataset.final;
+        unitEl.textContent = finalUnit;
         for (const key in cells) if (key !== 'sun') setCell(key, finals[key]);
       } else {
-        numText.nodeValue = fmtValue(tr.unit, lerp(tr.m, i, f), finalUnit);
+        const v = lerp(tr.m, i, f);
+        numText.nodeValue = fmtValue(tr.unit, v, finalUnit);
+        if (tr.unit === 'count') unitEl.textContent = Math.round(v) === 1 ? 'country' : 'countries';
         const el = tau - tr.t_zero;
-        setCell('time', fmtClock(seg ? Math.max(0, Math.min(el, tr.value * 3600)) : el));
-        setCell('dist', fmtKm(Math.max(0, dist ? lerp(tr.m, i, f) : lerp(tr.km, i, f) - tr.km[0])));
+        setCell('time', fmtClock(seg ? clamp(el, 0, tr.value * 3600) : el));
+        setCell('dist', fmtKm(Math.max(0, dist ? v : lerp(tr.km, i, f) - tr.km[0])));
         setCell('speed', `${group(Math.max(0, lerp(tr.kmh, i, f)))} km/h`);
         if (tr.h) { const hv = lerp(tr.h, i, f); setCell('height', hv == null ? '-' : `${group(hv)} m`); }
       }
@@ -239,242 +277,179 @@
       }
       if (cur) { cur.hidden = false; cur.style.left = `${p * 100}%`; }
       if (scrub) scrub.setAttribute('aria-valuenow', String(Math.round(p * 100)));
-    };
-    function setCell(key, text) { const b = cells[key]; if (b && b.textContent !== text) b.textContent = text; }
+    });
 
-    root.classList.add('live');
-    const clock = new Clock(REPLAY_MS, draw);
-    layout(); draw(1);
-    new ResizeObserver(() => { layout(); draw(clock.p); }).observe(poster);
-    wireControls(root, clock);
     if (scrub) {
+      const { clock } = ctl;
       scrub.setAttribute('role', 'slider'); scrub.tabIndex = 0;
       scrub.setAttribute('aria-label', 'Replay position, percent');
       scrub.setAttribute('aria-valuemin', '0'); scrub.setAttribute('aria-valuemax', '100');
-      const at = e => { const r = scrub.getBoundingClientRect(); clock.seek((e.clientX - r.left) / r.width); };
-      scrub.addEventListener('pointerdown', e => { scrub.setPointerCapture(e.pointerId); at(e); });
-      scrub.addEventListener('pointermove', e => { if (scrub.hasPointerCapture(e.pointerId)) at(e); });
+      const seek = e => { const r = scrub.getBoundingClientRect(); clock.seek((e.clientX - r.left) / r.width); };
+      scrub.addEventListener('pointerdown', e => { scrub.setPointerCapture(e.pointerId); seek(e); });
+      scrub.addEventListener('pointermove', e => { if (scrub.hasPointerCapture(e.pointerId)) seek(e); });
       scrub.addEventListener('keydown', e => {
         const step = { ArrowLeft: -.02, ArrowRight: .02, Home: -1, End: 1 }[e.key];
         if (step !== undefined) { e.preventDefault(); clock.seek(clock.p + step); }
       });
     }
-    autostart(root, clock);
-    return { clock, draw };
+    autostart(root, ctl.clock);
+    return ctl;
   }
 
-  /* ---------- board race ---------- */
-  async function initRace(root) {
-    const R = await (await fetch(root.dataset.race)).json();
-    const sils = Object.fromEntries(await Promise.all([...new Set(R.runners.map(r => r.sil))]
-      .map(async u => [u, await silhouette(root.dataset.root + u)])));
-    const faces = new Map(R.runners.map(r => [r.id, facing()]));
-    const stage = root.querySelector('.race-stage'), clockEl = root.querySelector('.race-clock');
-    const cv = document.createElement('canvas'); cv.className = 'route';
-    stage.querySelector('svg').after(cv);
-    const runners = R.runners;
-    const colour = r => RANK[r.rank - 1] || C.trk0;
-    const thumbs = R.kind === 'chart' ? [...document.querySelectorAll('.board .thumb')].map((svg, i) => {
-      const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-      c.setAttribute('r', '4.5'); c.setAttribute('class', 'tdot'); svg.append(c); return c;
-    }) : [];
-    const pos = (rn, tau) => {   // index, fraction at race time tau (clamped to the runner's finish)
-      const t = Math.min(tau, rn.finish);
-      return locate(rn.t, t);
-    };
-    const draw = p => {
-      const W = stage.clientWidth, H = stage.clientHeight, k = W / 1200 * FS, ku = W / 1200;
-      const compact = W < 640;
-      const g = fitCanvas(cv, W, H);
-      g.clearRect(0, 0, W, H);
+  const racePhase = (R, rn, tau) => REDUCED ? STILL : hz(rn.taxon) * Math.min(tau, rn.finish) / R.finish * RACE_MS / 1000 + rn.rank * .37;
+  const raceAt = (rn, tau) => locate(rn.t, Math.min(tau, rn.finish));
+
+  function mapRace(R) {
+    const yawOf = new Map(R.runners.map(rn => [rn.id, headings(u => { const [i, f] = raceAt(rn, rn.finish * u); return [lerp(rn.x, i, f), lerp(rn.y, i, f)]; })]));
+    const order = [...R.runners].reverse();
+    return (g, W, H, p) => {
+      const k = W / 1200, S = clamp(W / 760, .8, 1.25) * FS, compact = W < 640;
       const tau = R.finish * p;
-      clockEl.textContent = fmtClock(tau);
-      g.font = `700 ${Math.max(10, 15 * k)}px WS, system-ui, sans-serif`;
-      g.textBaseline = 'middle';
-      const done = runners.filter(rn => tau >= rn.finish);
-      if (R.kind === 'map') {
-        for (const rn of [...runners].reverse()) {
-          const [i, f] = pos(rn, tau);
-          const hx = lerp(rn.x, i, f) * ku, hy = lerp(rn.y, i, f) * ku;
-          g.beginPath(); g.moveTo(rn.x[0] * ku, rn.y[0] * ku);
-          for (let q = 1; q <= i; q++) g.lineTo(rn.x[q] * ku, rn.y[q] * ku);
-          g.lineTo(hx, hy);
-          g.strokeStyle = colour(rn); g.globalAlpha = rn.rank <= 3 ? .85 : .5; g.lineWidth = (rn.rank <= 3 ? 3 : 2) * k;
-          g.lineJoin = g.lineCap = 'round'; g.stroke(); g.globalAlpha = 1;
-        }
-        for (const rn of [...runners].reverse()) {
-          const [i, f] = pos(rn, tau);
-          const hx = lerp(rn.x, i, f) * ku, hy = lerp(rn.y, i, f) * ku;
-          const [j, fj] = pos(rn, Math.max(0, Math.min(tau, rn.finish) - R.finish * .01));
-          const left = faces.get(rn.id)(hx - lerp(rn.x, j, fj) * ku, .3);
-          // the podium carries the rank badges; the rest of the field stays small so that a tight pack reads
-          const podium = rn.rank <= 3;
-          const size = podium ? Math.max(22, 40 * k) : Math.max(13, 22 * k);
-          g.globalAlpha = podium ? 1 : .8;
-          const [w, h] = drawSil(g, sils[rn.sil], hx, hy, size, colour(rn), left);
-          g.globalAlpha = 1;
-          if (!podium) continue;
-          const r = Math.max(7, 10 * k), bx = hx + (left ? 1 : -1) * w * .42, by = hy - h * .5 - r * .2;
-          dot(g, bx, by, r, colour(rn), C.night, 2.5 * k);
-          g.fillStyle = C.night; g.textAlign = 'center';
-          g.font = `900 ${Math.max(9, 12 * k)}px WS, system-ui, sans-serif`;
-          g.fillText(String(rn.rank), bx, by + .5);
-        }
-      } else {
-        const [x0p, y0, x1p, y1p] = R.plot;
-        const kx = W / 1200, ky = H / 675, y1 = y1p;
-        const x0 = compact ? 46 / kx : x0p, x1 = compact ? 1200 - 34 / kx : x1p;
-        const X = t => (x0 + t / R.finish * (x1 - x0)) * kx, Y = d => (y1 - d / R.dmax * (y1 - y0)) * ky;
-        // axes and ticks
-        g.strokeStyle = C.line; g.lineWidth = 1; g.fillStyle = C.ink2;
-        g.font = `500 ${Math.max(10, 14 * k)}px WS, system-ui, sans-serif`;
-        g.textAlign = 'right';
-        for (const d of ticks(R.dmax)) {
-          g.beginPath(); g.moveTo(x0 * kx, Y(d)); g.lineTo(x1 * kx, Y(d)); g.globalAlpha = .6; g.stroke(); g.globalAlpha = 1;
-          g.fillText(group(d), x0 * kx - 8, Y(d));
-        }
-        g.beginPath(); g.moveTo(x0 * kx, y0 * ky); g.lineTo(x0 * kx, y1 * ky); g.lineTo(x1 * kx, y1 * ky); g.stroke();
-        g.textAlign = 'center';
-        for (const s of timeTicks(R.finish)) g.fillText(fmtClock(s).replace(':00 h', ' h'), X(s), y1 * ky + 12 + 8 * k);
-        const heads = [];
-        for (const rn of [...runners].reverse()) {
-          const [i, f] = pos(rn, tau);
-          g.beginPath();
-          let started = false;
-          for (let q = 0; q <= i; q++) { if (rn.t[q] < 0) continue; const x = X(rn.t[q]), y = Y(rn.d[q]); started ? g.lineTo(x, y) : g.moveTo(x, y); started = true; }
-          const ht = Math.max(0, Math.min(tau, rn.finish)), hd = lerp(rn.d, i, f);
-          started ? g.lineTo(X(ht), Y(hd)) : g.moveTo(X(ht), Y(hd));
-          g.strokeStyle = colour(rn); g.globalAlpha = rn.rank <= 3 ? 1 : .55; g.lineWidth = (rn.rank <= 3 ? 3.2 : 2) * k;
-          g.lineJoin = g.lineCap = 'round'; g.stroke(); g.globalAlpha = 1;
-          heads.push({ rn, x: X(ht), y: Y(hd), d: hd });
-        }
-        const ss = Math.max(16, 26 * k);
-        for (const h of heads) drawSil(g, sils[h.rn.sil], h.x, h.y, ss, colour(h.rn), false);
-        // labels at the heads, pushed apart so that they do not overlap
-        heads.sort((a, b) => a.y - b.y);
-        const fs = Math.max(compact ? 10 : 11, 14 * k), gap = fs * 1.35; let last = -1e9;
-        for (const h of heads) { h.ly = Math.max(h.y, last + gap); last = h.ly; }
-        const over = last - y1 * ky; if (over > 0) for (const h of heads) h.ly -= over;
-        g.textAlign = 'left';
-        for (const h of heads) {
-          const fin = tau >= h.rn.finish;
-          g.fillStyle = colour(h.rn); g.globalAlpha = h.rn.rank <= 3 || fin ? 1 : .75;
-          g.font = `${h.rn.rank <= 3 ? 900 : 700} ${fs}px WS, system-ui, sans-serif`;
-          const label = compact ? String(h.rn.rank) : `${h.rn.rank}  ${h.rn.name}  ${fin ? h.rn.display : fmtKmShort(h.d)}`;
-          g.fillText(label, h.x + ss * .9, h.ly);
-          g.globalAlpha = 1;
-        }
-        thumbs.forEach((c, idx) => {
-          const rn = runners[idx]; if (!rn) return;
-          const [i, f] = pos(rn, tau);
-          c.setAttribute('cx', lerp(rn.x, i, f).toFixed(1)); c.setAttribute('cy', lerp(rn.y, i, f).toFixed(1));
-        });
+      const heads = order.map(rn => {
+        const [i, f] = raceAt(rn, tau);
+        return { rn, i, x: lerp(rn.x, i, f) * k, y: lerp(rn.y, i, f) * k, podium: rn.rank <= 3, fin: tau >= rn.finish };
+      });
+      g.strokeStyle = C.track;
+      for (const h of heads) {
+        g.beginPath(); g.moveTo(h.rn.x[0] * k, h.rn.y[0] * k);
+        for (let q = 1; q <= h.i; q++) g.lineTo(h.rn.x[q] * k, h.rn.y[q] * k);
+        g.lineTo(h.x, h.y);
+        g.globalAlpha = h.podium ? .9 : .4; g.lineWidth = (h.podium ? 3 : 2) * S; g.stroke();
       }
-      // map race: finish times beside the podium markers while racing, the standings when it ends
-      if (R.kind === 'map' && p < 1) {
-        g.textAlign = 'left'; g.textBaseline = 'middle';
-        const fs = Math.max(10, 15 * k), off = Math.max(22, 40 * k) * .85;
-        g.font = `900 ${fs}px WS, system-ui, sans-serif`;
-        const labels = done.filter(rn => rn.rank <= 3).map(rn => {
-          const [i, f] = pos(rn, tau);
-          return { rn, x: lerp(rn.x, i, f) * ku + off, y: lerp(rn.y, i, f) * ku };
-        }).sort((a, b) => a.y - b.y);
-        let last = -1e9;
-        for (const l of labels) {     // pushed apart: markers that finish at the same place share one spot
-          l.y = Math.max(l.y, last + fs * 1.3); last = l.y;
-          g.lineWidth = 4 * k; g.strokeStyle = C.night; g.strokeText(l.rn.display, l.x, l.y);
-          g.fillStyle = colour(l.rn); g.fillText(l.rn.display, l.x, l.y);
-        }
+      g.globalAlpha = 1;
+      const big = clamp(W * .036, 18, 38) * FS;
+      for (const h of heads) {
+        h.size = h.podium ? big : big * .62;
+        topModel(g, h.rn.taxon, h.x, h.y, h.size, yawOf.get(h.rn.id)(Math.min(tau, h.rn.finish) / h.rn.finish), racePhase(R, h.rn, tau));
       }
-      if (R.kind === 'map' && p >= 1 && !compact) {
-        g.fillStyle = 'rgba(10,17,28,.62)'; g.fillRect(0, 0, W, H);
-        g.textAlign = 'left'; g.textBaseline = 'middle';
-        const order = [...runners].sort((a, b) => a.rank - b.rank);
-        const lh = Math.min(34 * k, (H - 230 * ku) / order.length), lx = 44 * ku, ly = (VIDEO ? 200 : 96) * ku;
-        const fs = Math.max(10, Math.min(16 * k, lh * .6));
-        order.forEach((rn, q) => {
-          const y = ly + q * lh;
-          dot(g, lx + fs * .7, y, fs * .7, colour(rn), null, 0);
-          g.fillStyle = C.night; g.textAlign = 'center'; g.font = `900 ${fs * .8}px WS, system-ui, sans-serif`;
-          g.fillText(String(rn.rank), lx + fs * .7, y + .5);
-          g.textAlign = 'left'; g.fillStyle = C.ink; g.font = `700 ${fs}px WS, system-ui, sans-serif`;
-          g.fillText(rn.name, lx + fs * 2, y);
-          g.fillStyle = C.trk1; g.font = `900 ${fs}px WS, system-ui, sans-serif`;
-          g.textAlign = 'right'; g.fillText(rn.display, lx + fs * 2 + 640 * ku * (VIDEO ? 1.15 : 1), y);
-        });
-      }
+      if (p >= 1 && !compact) return results(g, W, H, R.runners);
+      const labels = heads.filter(h => h.podium || !compact).map(h => {
+        const fs = (h.podium ? 13 : 11) * S;
+        const part = { id: shortId(h.rn.bib), band: h.rn.band, rank: h.podium ? h.rn.rank : 0, mark: h.podium && h.fin ? h.rn.display : '' };
+        const w = chip(g, 0, 0, fs, part, true);
+        const x = h.rn.rank % 2 ? h.x + h.size * .8 : h.x - h.size * .8 - w;
+        return { part, fs, w, h: fs * 1.5, x: clamp(x, 4, W - w - 4), y: h.y - h.size * .7, rank: h.rn.rank };
+      }).sort((a, b) => a.y - b.y);
+      labels.forEach((l, q) => {
+        for (const o of labels.slice(0, q)) if (l.x < o.x + o.w + 3 && o.x < l.x + l.w + 3) l.y = Math.max(l.y, o.y + (o.h + l.h) / 2 + 2);
+        l.y = clamp(l.y, CROP + l.h, H - CROP - l.h);
+      });
+      for (const l of labels.sort((a, b) => b.rank - a.rank)) chip(g, l.x, l.y, l.fs, l.part);
     };
-    root.classList.add('live');
-    const clock = new Clock(RACE_MS, draw);
-    draw(1);
-    new ResizeObserver(() => draw(clock.p)).observe(stage);
-    wireControls(root, clock);
-    autostart(root, clock, .5);
-    return { clock, draw };
   }
-  function fmtKmShort(d) { return `${group(d)} km`; }
+  function results(g, W, H, runners) {
+    const k = W / 1200, x = 30 * k, y = VIDEO ? CROP + 5 : 84 * k, w = (VIDEO ? 640 : 560) * k;
+    const row = Math.min(54 * k * FS, (H - CROP - y - 22 * k) / runners.length), fs = clamp(row * .44, 10, 28);
+    g.fillStyle = 'rgba(20,18,16,.3)'; g.fillRect(x + 3, y + 6, w, row * runners.length + 4);
+    g.fillStyle = C.paper; g.fillRect(x, y, w, row * runners.length + 4);
+    runners.forEach((rn, q) => {
+      const cy = y + 2 + (q + .5) * row;
+      if (q) { g.fillStyle = 'rgba(20,18,16,.16)'; g.fillRect(x + 12 * k, cy - row / 2, w - 24 * k, 1); }
+      g.fillStyle = rn.rank === 1 ? C.track : C.ink; g.textAlign = 'center';
+      g.font = `900 ${fs * 1.3}px ${DISPLAY}`; g.fillText(String(rn.rank), x + fs * 1.5, cy + fs * .08);
+      g.font = `800 ${fs * 1.25}px ${DISPLAY}`; g.textAlign = 'right'; g.fillText(rn.display, x + w - fs * .9, cy + fs * .08);
+      const mark = g.measureText(rn.display).width, cx = x + fs * 3;
+      const cw = chip(g, cx, cy, fs * .85, { id: shortId(rn.bib), band: rn.band });
+      g.textAlign = 'left'; g.fillStyle = C.ink;
+      g.fillText(fitText(g, rn.name, x + w - fs * 1.6 - mark - (cx + cw + fs * .6), fs, bold), cx + cw + fs * .6, cy);
+    });
+  }
+
+  function laneRace(R) {
+    const n = R.runners.length;
+    return (g, W, H, p) => {
+      const k = W / 1200, compact = W < 640, tau = R.finish * p;
+      const head = VIDEO ? 138 : compact ? 40 : Math.max(56, 80 * k), foot = VIDEO ? 50 : compact ? 22 : Math.max(26, 36 * k);
+      const lh = Math.min((H - head - foot) / n, (H - head - foot) / 5), y1 = head + lh * n;
+      const noW = compact ? 28 : Math.max(46, lh * .95), band = compact ? 12 : 30 * k * FS;
+      const runH = compact ? lh - 19 : lh, box = [runH * (compact ? 2 : 2.1), runH * (compact ? .92 : 1.12)];
+      const infoW = compact ? 0 : clamp(W * .24, 170, 310);
+      const x0 = noW + infoW + box[0] + (compact ? 4 : 14), x1 = W - band - 4;
+      const X = d => x0 + d / R.dmax * (x1 - x0);
+
+      g.fillStyle = g.strokeStyle = C.paint;
+      g.font = `600 ${compact ? 11 : 14 * Math.max(k, .9) * FS}px ${TEXT}`; g.textAlign = 'center';
+      const marks = ticks(R.dmax).filter(d => d < R.dmax * .95);
+      const upright = (x, w) => { for (let q = 0; q < n; q++) g.fillRect(x - w / 2, head + q * lh + lh - runH, w, runH); };
+      marks.forEach((d, q) => {
+        g.globalAlpha = .34; upright(X(d), 2); g.globalAlpha = 1;
+        g.fillText(group(d, Number.isInteger(d) ? 0 : 1) + (q === marks.length - 1 ? ' km' : ''), X(d), y1 + foot * .5);
+      });
+      const lw = compact ? 2 : 3;
+      for (let q = 0; q <= n; q++) g.fillRect(0, head + q * lh - lw / 2, W, lw);
+      upright(x0, 4); g.fillRect(x1 - 2, head, 4, y1 - head);
+      const cell = (W - x1 - 2) / 2;
+      g.save(); g.beginPath(); g.rect(x1 + 2, head, W, y1 - head); g.clip();
+      checker(g, x1 + 2, head, 2, Math.ceil((y1 - head) / cell), cell);
+      g.restore();
+
+      R.runners.forEach((rn, q) => {
+        const top = head + q * lh, mid = top + lh / 2, fin = tau >= rn.finish;
+        const [i, f] = raceAt(rn, tau), nose = X(lerp(rn.d, i, f));
+        g.fillStyle = C.paint; g.textAlign = 'center';
+        g.font = `900 ${lh * (compact ? .6 : .68)}px ${DISPLAY}`; g.fillText(String(rn.rank), noW / 2, mid + lh * .04);
+        const ix = noW + (compact ? 6 : 12), fs = compact ? 11 : clamp(lh * (VIDEO ? .3 : .27), 12, 22);
+        const part = { id: shortId(rn.bib), band: rn.band };
+        if (compact) {
+          const cw = chip(g, ix, top + 11, fs, part);
+          g.font = `800 14px ${DISPLAY}`; g.fillStyle = C.paint; g.textAlign = 'right';
+          const mw = fin ? g.measureText(rn.display).width + 8 : 0;
+          if (fin) g.fillText(rn.display, x1 - 6, top + 12);
+          g.textAlign = 'left';
+          g.fillText(fitText(g, rn.name, x1 - 6 - mw - (ix + cw + 6), 12, bold), ix + cw + 6, top + 11);
+        } else {
+          g.textAlign = 'left';
+          g.fillText(fitText(g, rn.name, infoW - 16, fs, bold), ix, mid - fs * .74);
+          chip(g, ix, mid + fs * .74, fs * .92, part);
+        }
+        const floor = top + lh - Math.max(3, lh * .09);
+        const w = sideModel(g, rn.taxon, nose, floor, compact ? floor - runH * .45 : mid, box, racePhase(R, rn, tau));
+        if (fin && !compact) {
+          g.font = `800 ${lh * .44}px ${DISPLAY}`; g.fillStyle = C.paint;
+          const behind = nose - w - 12 - g.measureText(rn.display).width > x0 + 8;
+          g.textAlign = behind ? 'right' : 'left';
+          g.fillText(rn.display, behind ? nose - w - 12 : nose + 12, mid + lh * .03);
+        }
+      });
+    };
+  }
   function ticks(max) {
-    const step = [1, 2, 5].flatMap(m => [1, 10, 100, 1000, 10000, 100000].map(e => m * e)).sort((a, b) => a - b).find(s => max / s <= 5);
+    const step = [1, 2, 5].flatMap(m => [.1, 1, 10, 100, 1000, 10000, 100000].map(e => m * e)).sort((a, b) => a - b).find(s => max / s <= 5);
     const out = []; for (let v = step; v <= max; v += step) out.push(v); return out;
   }
-  function timeTicks(sec) {
-    const steps = [600, 1800, 3600, 3 * 3600, 6 * 3600, 12 * 3600, 86400, 2 * 86400, 7 * 86400, 30 * 86400, 91 * 86400, 182 * 86400, 365.25 * 86400];
-    const step = steps.find(s => sec / s <= 6) || 365.25 * 86400;
-    const out = []; for (let v = step; v <= sec; v += step) out.push(v); return out;
+
+  async function initRace(root) {
+    const [R] = await Promise.all([fetch(root.dataset.race).then(r => r.json()), fonts()]);
+    const stage = root.querySelector('.race-stage'), clockEl = root.querySelector('.race-clock');
+    const draw = (R.kind === 'map' ? mapRace : laneRace)(R);
+    const ctl = scene(root, stage, stage.querySelector('svg'), RACE_MS, (g, W, H, p) => {
+      clockEl.textContent = fmtClock(R.finish * p);
+      draw(g, W, H, p);
+    });
+    autostart(root, ctl.clock, .5);
+    return ctl;
   }
 
-  /* ---------- home cards ---------- */
-  function initCards(cards) {
-    if (REDUCED) return;
-    const io = new IntersectionObserver(es => {
-      for (const e of es) if (e.isIntersecting) { io.unobserve(e.target); drawCard(e.target); }
-    }, { threshold: .35 });
-    cards.forEach(c => io.observe(c));
+  const INTRO = .6, OUTRO = 2.6;
+  function raceVideo(ctl) {
+    const run = RACE_MS / 1000;
+    return { duration: INTRO + run + OUTRO, frame: sec => ctl.draw(clamp((sec - INTRO) / run)) };
   }
-  async function drawCard(card) {
-    const img = card.querySelector('img');
-    const bare = new Image(); bare.src = card.dataset.bare;
-    let tr;
-    let sil;
-    try { [tr, , sil] = await Promise.all([fetch(card.dataset.track).then(r => r.json()), bare.decode(), silhouette(card.dataset.sil)]); } catch { return; }
-    const cv = document.createElement('canvas'); cv.className = 'route';
-    card.append(cv);
-    img.src = bare.src;
-    const n = tr.t.length, span = tr.t[n - 1] - tr.t[0];
-    const face = facing();
-    let start = 0;
-    const frame = now => {
-      start ||= now;
-      const p = Math.min(1, (now - start) / CARD_MS), q = ease(p);
-      const W = img.clientWidth, k = W / 1200, proj = projector(tr.view, k);
-      const g = fitCanvas(cv, W, img.clientHeight);
-      g.clearRect(0, 0, W, img.clientHeight);
-      const tau = tr.t[0] + span * q;
-      const [i, f] = locate(tr.t, tau);
-      const P = tr.t.slice(0, i + 1).map((_, j) => proj(tr.lon[j], tr.lat[j]));
-      const head = proj(lerp(tr.lon, i, f), lerp(tr.lat, i, f));
-      P.push(head);
-      drawRoute(g, P, head, k, { end: proj(tr.lon[n - 1], tr.lat[n - 1]) });
-      if (!tr.coarse) dot(g, P[0][0], P[0][1], 9 * k, C.night, C.trk0, 5 * k);
-      const back = P[Math.max(0, P.length - 3)];
-      drawSil(g, sil, head[0], head[1], Math.max(22, 64 * k), C.trk1, face(head[0] - back[0], .5));
-      if (p < 1) requestAnimationFrame(frame);
-    };
-    requestAnimationFrame(frame);
-  }
-
-  /* ---------- video mode: the capture script sets each frame's time ---------- */
-  function videoMode(el, ctl, kind) {
-    document.body.className = `video video-${kind}`;
-    document.body.replaceChildren(el);
-    const INTRO = 0.6, OUTRO = 2.6, RUN = kind === 'race' ? RACE_MS / 1000 : REPLAY_MS / 1000;
-    window.wildprsVideo = {
-      duration: INTRO + RUN + OUTRO,
+  function replayVideo(el, ctl) {
+    const run = REPLAY_MS / 1000, HOLD = .7, RISE = .45, CARD = 1.6;
+    const card = el.querySelector('.tcard'), cv = card.querySelector('canvas[data-taxon]');
+    const taxon = cv.dataset.taxon, o = Models.options(cv), zoom = card.getBoundingClientRect().width / card.offsetWidth;
+    return {
+      duration: INTRO + run + HOLD + RISE + CARD,
       frame(sec) {
-        const p = Math.max(0, Math.min(1, (sec - INTRO) / RUN));
-        ctl.draw(p);
-        const ro = el.querySelector('.ro');
-        if (ro) ro.style.opacity = String(1 - Math.max(0, Math.min(1, (sec - INTRO - RUN - 0.5) / 0.5)));
+        ctl.draw(clamp((sec - INTRO) / run));
+        const t = sec - INTRO - run - HOLD, q = clamp(t / RISE);
+        card.style.visibility = t > 0 ? 'visible' : 'hidden';
+        card.style.translate = `0 ${((1 - q) ** 4 * innerHeight).toFixed(1)}px`;
+        if (t <= 0) return;
+        const w = cv.clientWidth, h = cv.clientHeight;
+        Zoo.draw(fitCanvas(cv, w, h, zoom), Zoo.build(taxon, o.phase + t * hz(taxon)),
+          { ...o, name: taxon, x: w / 2, y: h / 2, box: [w * o.pad, h * o.pad] });
       },
     };
   }
@@ -482,18 +457,21 @@
   async function main() {
     const replayEl = document.querySelector('.replay[data-track]');
     const raceEl = document.querySelector('.race[data-race]');
-    if (replayEl) {
-      const ctl = await initReplay(replayEl);
-      if (VIDEO) videoMode(replayEl, ctl, 'replay');
+    if (VIDEO) {
+      const el = replayEl || raceEl, parts = el.querySelector('template.vid');
+      document.body.className = 'video';
+      document.body.replaceChildren(el);
+      if (replayEl && !parts) throw new Error('this record has no video');
+      if (parts) el.append(parts.content);
+      const ctl = await (replayEl ? initReplay : initRace)(el);
+      window.wildprsVideo = replayEl ? replayVideo(el, ctl) : raceVideo(ctl);
+      await document.fonts.ready;
+      window.wildprsVideo.frame(0);
+      window.wildprsReady = true;
+      return;
     }
-    if (raceEl) {
-      if (VIDEO) { document.body.className = 'video video-race'; document.body.replaceChildren(raceEl); }
-      const ctl = await initRace(raceEl);
-      if (VIDEO) videoMode(raceEl, ctl, 'race');
-    }
-    const cards = document.querySelectorAll('.card[data-track]');
-    if (cards.length) initCards(cards);
-    if (VIDEO) { await document.fonts.ready; window.wildprsReady = true; }
+    if (replayEl) await initReplay(replayEl);
+    if (raceEl) await initRace(raceEl);
   }
   main().catch(e => { console.error(e); if (VIDEO) window.wildprsError = String(e); });
 })();

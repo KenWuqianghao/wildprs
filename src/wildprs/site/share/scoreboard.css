@@ -1,0 +1,29 @@
+@font-face { font-family: "Martian Mono"; src: url(fonts/MartianMono.woff2) format("woff2"); font-weight: 100 800; }
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { width: 1200px; height: 675px; overflow: hidden; -webkit-font-smoothing: antialiased; }
+
+.sposter {
+  --ink: #ffb000; --sub: #b37c02; --dim: #795504; --bg: #0b0a07;
+  --cw: 6.25px; --rh: calc(var(--cw) * 2); --fs: calc(var(--cw) / .7);
+  position: relative; width: 1200px; height: 675px; overflow: hidden; background: var(--bg); color: var(--ink); box-shadow: inset 0 0 0 1px var(--dim);
+  font: 400 var(--fs)/var(--rh) "Martian Mono", monospace; font-variant-numeric: tabular-nums; font-variant-ligatures: none; text-rendering: geometricPrecision;
+}
+.sposter p { white-space: pre; font-size: calc(var(--fs) * var(--m)); line-height: calc(var(--rh) * var(--m)); }
+.b { font-weight: 800; }
+.txt { position: absolute; left: calc(var(--cw) * 6); top: calc(var(--rh) * 3); }
+.board { margin-top: calc(var(--rh) * (3 + var(--spare))); }
+.sposter .num { margin-top: var(--rh); height: calc(var(--rh) * 12); line-height: calc(var(--rh) * 12); }
+.num .v { text-shadow: 0 0 calc(var(--cw) * 2.5) rgba(255, 176, 0, .5); }
+.num .u { font-size: calc(var(--fs) * 5); line-height: calc(var(--rh) * 5); }
+.common { color: var(--sub); }
+.hook { margin-top: var(--rh); }
+.rank { position: absolute; right: calc(var(--cw) * 6); top: calc(var(--rh) * 3); text-align: right; }
+.rank + .rank { top: calc(var(--rh) * 7); color: var(--sub); }
+.src { position: absolute; left: calc(var(--cw) * 6); bottom: calc(var(--rh) * 2); color: var(--sub); }
+
+.view { position: absolute; left: calc(var(--cw) * 98); top: calc(var(--rh) * 10); width: calc(var(--cw) * 90); height: calc(var(--rh) * 40); }
+.view pre { position: absolute; inset: 0; font: 600 var(--fs)/var(--rh) "Martian Mono", monospace; white-space: pre; }
+.view .g1 { color: var(--dim); font-weight: 400; }
+.view .g2 { color: #e09a00; }
+.view .g3 { color: #ffc23d; font-weight: 800; text-shadow: 0 0 calc(var(--cw) * .9) rgba(255, 176, 0, .75); }
